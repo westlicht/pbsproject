@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "Common.h"
+
 namespace pbs {
 
 template <typename _Scalar, int _Dimension> struct TVector : public Eigen::Matrix<_Scalar, _Dimension, 1> {

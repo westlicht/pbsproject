@@ -104,6 +104,8 @@ include_directories(
   # ${CMAKE_CURRENT_SOURCE_DIR}/ext/half
   # Tinyformat
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyformat
+  # cxxopts
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/cxxopts
   # Resource file
   ${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -139,8 +141,17 @@ add_custom_command(
 
 add_executable(pbsproject #MACOSX_BUNDLE
   #resources.h resources.cpp
-  src/Common.h
+  src/Box.h
+  src/Common.h src/Common.cpp
+  src/MarchingCubes.h src/MarchingCubes.cpp
+  src/Mesh.h
+  src/ObjReader.h src/ObjReader.cpp
+  src/ObjWriter.h src/ObjWriter.cpp
   src/SPH.h src/SPH.cpp
+  src/SPH3d.h src/SPH3d.cpp
+  src/Test.h
+  src/Vector.h
+  src/VoxelGrid.h
   src/main.cpp
   ${EXTRA_SOURCE})
 
