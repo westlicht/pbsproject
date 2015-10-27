@@ -15,15 +15,13 @@
 
 using namespace nanogui;
 
-#if 0
 static inline float unitToRange(float x, float lo, float hi) {
-    return lo + nori::clamp(x, 0.f, 1.f) * (hi - lo);
+    return lo + pbs::clamp(x, 0.f, 1.f) * (hi - lo);
 }
 
 static inline float rangeToUnit(float x, float lo, float hi) {
-    return nori::clamp((x - lo) / (hi - lo), 0.f, 1.f);
+    return pbs::clamp((x - lo) / (hi - lo), 0.f, 1.f);
 }
-#endif
 
 class Viewer : public Screen {
 public:
@@ -54,7 +52,7 @@ public:
         double dt = 0.01;
         auto currentTime = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - _startTime).count();
         while (_lastTime + dt < currentTime) {
-            _sph.update(dt);
+            _sph.update(dt*0.3);
             _lastTime += dt;
         }
 
@@ -88,83 +86,65 @@ public:
     }
 
     void refresh() {
-        #if 0
-        m_focalLengthTextBox->setUnits("mm");
-        m_focalLengthTextBox->setValue(tfm::format("%.1f", m_camera->getFocalLength()));
-        m_fStopSlider->setValue(rangeToUnit(m_camera->getFStop(), 1.f, 22.f));
-        m_fStopTextBox->setValue(tfm::format("%.1f", m_camera->getFStop()));
-        m_focusDistanceSlider->setValue(rangeToUnit(m_camera->getFocusDistance(), 0.f, 10.f));
-        m_focusDistanceTextBox->setUnits("m");
-        m_focusDistanceTextBox->setValue(tfm::format("%.1f", m_camera->getFocusDistance()));
-        #endif
+        _stiffnessSlider->setValue(rangeToUnit(_sph.settings().stiffness, 0.5f, 10.f));
+        _stiffnessTextBox->setValue(tfm::format("%.1f", _sph.settings().stiffness));
+        _viscositySlider->setValue(rangeToUnit(_sph.settings().viscosity, 0.5f, 10.f));
+        _viscosityTextBox->setValue(tfm::format("%.1f", _sph.settings().viscosity));
     }
 
     void initializeGUI() {
-        #if 0
+        _sceneNames = { "Default" };
+
         Widget *panel;
 
-        m_window = new Window(this, "Lens Settings");
-        m_window->setPosition(Vector2i(15, 15));
-        m_window->setLayout(new GroupLayout());
+        _window = new Window(this, "Settings");
+        _window->setPosition(Vector2i(15, 15));
+        _window->setLayout(new GroupLayout());
 
-        new Label(m_window, "Lens Design", "sans-bold");
+        new Label(_window, "Scene", "sans-bold");
 
-        m_lensDesignComboBox = new ComboBox(m_window, m_lensNames);
-        m_lensDesignComboBox->setCallback([&] (int i) {
-            loadLensSystem(m_lensNames[i]);
+        _sceneComboBox = new ComboBox(_window, _sceneNames);
+        _sceneComboBox->setCallback([&] (int i) {
+            //loadScene(_sceneNames[i]);
             refresh();
         });
 
-        new Label(m_window, "Focal Length", "sans-bold");
-        m_focalLengthTextBox = new TextBox(m_window);
-        m_focalLengthTextBox->setFixedSize(Vector2i(80, 25));
+        new Label(_window, "Stiffness", "sans-bold");
+        panel = new Widget(_window);
+        panel->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 20));
+        _stiffnessSlider = new Slider(panel);
+        _stiffnessSlider->setFixedWidth(100);
+        _stiffnessSlider->setCallback([&] (float f) { _sph.settings().stiffness = unitToRange(f, 0.5f, 10.f); refresh(); });
+        _stiffnessTextBox = new TextBox(panel);
+        _stiffnessTextBox->setFixedSize(Vector2i(80, 25));
 
-        new Label(m_window, "F-Stop", "sans-bold");
-        panel = new Widget(m_window);
-        panel->setLayout(new BoxLayout(BoxLayout::Horizontal, BoxLayout::Middle, 0, 20));
-        m_fStopSlider = new Slider(panel);
-        m_fStopSlider->setFixedWidth(100);
-        m_fStopSlider->setCallback([&] (float f) { m_camera->setFStop(unitToRange(f, 1.f, 22.f)); refresh(); });
-        m_fStopTextBox = new TextBox(panel);
-        m_fStopTextBox->setFixedSize(Vector2i(80, 25));
-
-        new Label(m_window, "Focus Distance", "sans-bold");
-        panel = new Widget(m_window);
-        panel->setLayout(new BoxLayout(BoxLayout::Horizontal, BoxLayout::Middle, 0, 20));
-        m_focusDistanceSlider = new Slider(panel);
-        m_focusDistanceSlider->setFixedWidth(100);
-        m_focusDistanceSlider->setCallback([&] (float f) { m_camera->setFocusDistance(unitToRange(f, 0.f, 10.f)); refresh(); });
-        m_focusDistanceTextBox = new TextBox(panel);
-        m_focusDistanceTextBox->setFixedSize(Vector2i(80, 25));
-
-        new Label(m_window, "Display", "sans-bold");
-        panel = new Widget(m_window);
-        panel->setLayout(new BoxLayout(BoxLayout::Horizontal, BoxLayout::Middle, 0, 20));
-        Slider *scaleSlider = new Slider(panel);
-        scaleSlider->setFixedWidth(100);
-        scaleSlider->setCallback([&] (float f) { m_scale = f * 10.f + 1.f; });
+        new Label(_window, "Viscosity", "sans-bold");
+        panel = new Widget(_window);
+        panel->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 20));
+        _viscositySlider = new Slider(panel);
+        _viscositySlider->setFixedWidth(100);
+        _viscositySlider->setCallback([&] (float f) { _sph.settings().viscosity = unitToRange(f, 0.5f, 10.f); refresh(); });
+        _viscosityTextBox = new TextBox(panel);
+        _viscosityTextBox->setFixedSize(Vector2i(80, 25));
 
         refresh();
-        #endif
 
         performLayout(mNVGContext);
 
         setVisible(true);
     }
 
-
 private:
-    #if 0
-    Window *m_window;
-    ComboBox *m_lensDesignComboBox;
-    TextBox *m_focalLengthTextBox;
-    Slider *m_fStopSlider;
-    TextBox *m_fStopTextBox;
-    Slider *m_focusDistanceSlider;
-    TextBox *m_focusDistanceTextBox;
-    #endif
+    Window *_window;
+    ComboBox *_sceneComboBox;
+    Slider *_stiffnessSlider;
+    TextBox *_stiffnessTextBox;
+    Slider *_viscositySlider;
+    TextBox *_viscosityTextBox;
 
-    pbs::SPH _sph;
+    std::vector<std::string> _sceneNames;
+
+    pbs::sph2d::SPH _sph;
 
     std::chrono::high_resolution_clock::time_point _startTime;
     double _lastTime;
