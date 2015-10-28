@@ -12,31 +12,34 @@ void ObjWriter::save(const Mesh &mesh, const std::string &filename) {
         throw Exception("Unable to open OBJ file \"%s\" for writing!", filename);
     }
 
-    for (const auto &v : mesh.vertices()) {
+    for (int i = 0; i < mesh.vertices().cols(); ++i) {
+        const auto &v = mesh.vertices().col(i);
         os << "v " << v.x() << " " << v.y() << " " << v.z() << std::endl;
     }
 
-    for (const auto &n : mesh.normals()) {
+    for (int i = 0; i < mesh.normals().cols(); ++i) {
+        const auto &n = mesh.normals().col(i);
         os << "vn " << n.x() << " " << n.y() << " " << n.z() << std::endl;
     }
 
-    for (const auto &tc : mesh.texcoords()) {
-        os << "vt " << tc.x() << " " << tc.y() << std::endl;
+    for (int i = 0; i < mesh.texcoords().cols(); ++i) {
+        const auto &tc = mesh.texcoords().col(i);
+        os << "vn " << tc.x() << " " << tc.y() << std::endl;
     }
 
     os << std::endl;
 
-    bool writeNormals = !mesh.normals().empty();
-    bool writeTexcoords = !mesh.texcoords().empty();
+    bool writeNormals = mesh.normals().cols() > 0;
+    bool writeTexcoords = mesh.texcoords().cols() > 0;
 
-    for (const auto &t : mesh.triangles()) {
-        uint32_t i[3] = { t.i1 + 1, t.i2 + 1, t.i3 + 1 };
+    for (int i = 0; i < mesh.triangles().cols(); ++i) {
+        const auto &t = mesh.triangles().col(i);
         os << "f ";
         for (int j = 0; j < 3; ++j) {
-            os << i[j] << "/";
-            if (writeTexcoords) os << i[j];
+            os << (t[j] + 1) << "/";
+            if (writeTexcoords) os << (t[j] + 1);
             os << "/";
-            if (writeNormals) os << i[j];
+            if (writeNormals) os << (t[j] + 1);
             if (j < 2) os << " ";
         }
         os << std::endl;

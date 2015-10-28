@@ -471,15 +471,15 @@ Mesh MarchingCubes<T>::mesh() const
 {
 	Mesh mesh;
 
-	mesh.vertices().resize(m_nVertices);
-	mesh.normals().resize(m_nNormals);
-	mesh.triangles().resize(m_nTriangles);
+	mesh.vertices().resize(3, m_nVertices);
+	mesh.normals().resize(3, m_nNormals);
+	mesh.triangles().resize(3, m_nTriangles);
 
 	std::memcpy(mesh.vertices().data(), m_ppt3dVertices, m_nVertices * sizeof(Vector3f));
 	std::memcpy(mesh.normals().data(), m_pvec3dNormals, m_nNormals * sizeof(Vector3f));
 
 	for (unsigned int i = 0; i < m_nTriangles; i++) {
-		mesh.triangles()[i] = Mesh::Triangle({m_piTriangleIndices[i*3], m_piTriangleIndices[i*3+1], m_piTriangleIndices[i*3+2]});
+		mesh.triangles().col(i) = Vector3u({m_piTriangleIndices[i*3], m_piTriangleIndices[i*3+1], m_piTriangleIndices[i*3+2]});
 	}
 
 	return std::move(mesh);

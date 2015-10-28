@@ -28,6 +28,10 @@ typedef TVector<int, 1>         Vector1i;
 typedef TVector<int, 2>         Vector2i;
 typedef TVector<int, 3>         Vector3i;
 typedef TVector<int, 4>         Vector4i;
+typedef TVector<uint32_t, 1>    Vector1u;
+typedef TVector<uint32_t, 2>    Vector2u;
+typedef TVector<uint32_t, 3>    Vector3u;
+typedef TVector<uint32_t, 4>    Vector4u;
 typedef TBox<Vector1f>          Box1f;
 typedef TBox<Vector2f>          Box2f;
 typedef TBox<Vector3f>          Box3f;
@@ -40,6 +44,9 @@ typedef TBox<Vector1i>          Box1i;
 typedef TBox<Vector2i>          Box2i;
 typedef TBox<Vector3i>          Box3i;
 typedef TBox<Vector4i>          Box4i;
+
+typedef Eigen::Matrix<float,    Eigen::Dynamic, Eigen::Dynamic> MatrixXf;
+typedef Eigen::Matrix<uint32_t, Eigen::Dynamic, Eigen::Dynamic> MatrixXu;
 
 // Math utilities -------------------------------------------------------------
 

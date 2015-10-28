@@ -73,30 +73,25 @@ Mesh ObjReader::load(const std::string &filename) {
         }
     }
 
-    mesh.triangles().resize(indices.size() / 3);
-    for (size_t i = 0; i < indices.size() / 3; ++i) {
-        mesh.triangles()[i].i1 = indices[i * 3];
-        mesh.triangles()[i].i2 = indices[i * 3 + 1];
-        mesh.triangles()[i].i3 = indices[i * 3 + 2];
-    }
-    //std::memcpy(mesh.triangles().data(), indices.data(), indices.size() * sizeof(uint32_t));
+    mesh.triangles().resize(3, indices.size() / 3);
+    std::memcpy(mesh.triangles().data(), indices.data(), indices.size() * sizeof(uint32_t));
 
-    mesh.vertices().resize(vertices.size());
+    mesh.vertices().resize(3, vertices.size());
     for (size_t i = 0; i < vertices.size(); ++i) {
-        mesh.vertices()[i] = positions.at(vertices[i].p - 1);
+        mesh.vertices().col(i) = positions[vertices[i].p - 1];
     }
 
     if (!normals.empty()) {
-        mesh.normals().resize(vertices.size());
+        mesh.normals().resize(3, vertices.size());
         for (size_t i = 0; i < vertices.size(); ++i) {
-            mesh.normals()[i] = normals.at(vertices[i].n - 1);
+            mesh.normals().col(i) = normals[vertices[i].n - 1];
         }
     }
 
     if (!texcoords.empty()) {
-        mesh.texcoords().resize(vertices.size());
+        mesh.texcoords().resize(2, vertices.size());
         for (size_t i = 0; i < vertices.size(); ++i) {
-            mesh.texcoords()[i] = texcoords.at(vertices[i].uv - 1);
+            mesh.texcoords().col(i) = texcoords[vertices[i].uv - 1];
         }
     }
 
