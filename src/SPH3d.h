@@ -4,7 +4,11 @@
 #include "Vector.h"
 #include "Box.h"
 
+#include <tbb/tbb.h>
+
 #include <vector>
+
+#define USE_TBB 1
 
 namespace pbs {
 namespace sph3d {
@@ -107,9 +111,9 @@ public:
         // Number of particles expected to be within smoothing kernel support
         static constexpr int supportParticles = 30;
         // Number of particles per unit volume
-        static constexpr int particlesPerUnitVolume = 10000;
+        static constexpr int particlesPerUnitVolume = 500000;
         // Rest density in kg/m^2
-        static constexpr float restDensity = 100.f;
+        static constexpr float restDensity = 1000.f;
     };
 
     // Simulation settings
@@ -128,10 +132,10 @@ public:
         float h2;
 
         Kernel(float h) : h(h), h2(sqr(h)) {
-            poly6Constant = 4.f / (M_PI * std::pow(h, 8.f));
-            spikyConstant = 10.f / (M_PI * std::pow(h, 5.f));
-            spikyGradConstant = -30.f / (M_PI * std::pow(h, 5.f));
-            viscosityLaplaceConstant = 360.f / (29.f * M_PI * std::pow(h, 5.f));
+            poly6Constant = 365.f / (64.f * M_PI * std::pow(h, 9.f));
+            spikyConstant = 15.f / (M_PI * std::pow(h, 6.f));
+            spikyGradConstant = -45.f / (M_PI * std::pow(h, 6.f));
+            viscosityLaplaceConstant = 45.f / (M_PI * std::pow(h, 6.f));
         }
 
         // Kernels are split into constant and variable part. Arguments are as follows:
@@ -162,10 +166,11 @@ public:
     };
 
     SPH() :
-        _restSpacing(1.f / std::sqrt(Constants::particlesPerUnitVolume)),
+        _restSpacing(1.f / std::pow(Constants::particlesPerUnitVolume, 1.f / 3.f)),
         _particleMass(Constants::restDensity / Constants::particlesPerUnitVolume),
         _particleMass2(sqr(_particleMass)),
-        _h(std::sqrt(Constants::supportParticles * (1.f / Constants::particlesPerUnitVolume) / M_PI)),
+        //_h(std::sqrt(Constants::supportParticles * (1.f / Constants::particlesPerUnitVolume) / M_PI)),
+        _h(std::pow((3.f * Constants::supportParticles) / (4.f * M_PI * Constants::particlesPerUnitVolume), 1.f / 3.f)),
         _h2(sqr(_h)),
         _kernel(_h),
         _bounds(Box3f(Vector3f(0.f), Vector3f(1.f))),
@@ -201,7 +206,11 @@ public:
     }
 
     void computeDensity() {
+#if USE_TBB
+        tbb::parallel_for(0ul, _particles.size(), 1ul, [this] (size_t i) {
+#else
         for (size_t i = 0; i < _particles.size(); ++i) {
+#endif
             float density = 0.f;
             _grid.lookup(_particles[i].p, _h, [this, i, &density] (size_t j) {
                 Vector3f r = _particles[i].p - _particles[j].p;
@@ -211,11 +220,19 @@ public:
                 }
             });
             _particles[i].density = density;
+#if USE_TBB
+        });
+#else            
         }
+#endif
     }
 
     void computeForces() {
+#if USE_TBB
+        tbb::parallel_for(0ul, _particles.size(), 1ul, [this] (size_t i) {
+#else
         for (size_t i = 0; i < _particles.size(); ++i) {
+#endif
             Vector3f force(0.f);
             _grid.lookup(_particles[i].p, _h, [this, i, &force] (size_t j) {
                 const float &density_i = _particles[i].density;
@@ -253,7 +270,11 @@ public:
             force += _particleMass * _settings.gravity;
 
             _particles[i].force = force;
+#if USE_TBB
+        });
+#else            
         }
+#endif
     }
 
     void computeCollisions(std::function<void(Particle &particle, const Vector3f &n, float d)> handler) {
@@ -342,6 +363,19 @@ public:
 
     const Box3f &bounds() const { return _bounds; }
     const std::vector<Particle> &particles() const { return _particles; }
+    float smoothRadius() const { return _h; }
+    float restDensity() const { return Constants::restDensity; }
+    float particleMass() const { return _particleMass; }
+
+    // Returns particle positions in matrix form.
+    MatrixXf positions() const {
+        MatrixXf positions;
+        positions.resize(3, _particles.size());
+        for (size_t i = 0; i < _particles.size(); ++i) {
+            positions.col(i) = _particles[i].p;
+        }
+        return std::move(positions);
+    }
 
 private:
     float _restSpacing;
