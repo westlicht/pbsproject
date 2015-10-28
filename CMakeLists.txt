@@ -72,12 +72,12 @@ set(NANOGUI_BUILD_SHARED  OFF CACHE BOOL " " FORCE)
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/nanogui ext_build/nanogui)
 
-# # Build TBB
-# set(TBB_BUILD_STATIC ON CACHE BOOL " " FORCE)
-# set(TBB_BUILD_SHARED OFF CACHE BOOL " " FORCE)
-# set(TBB_BUILD_TBBMALLOC OFF CACHE BOOL " " FORCE)
-# set(TBB_BUILD_TBBMALLOC_PROXY OFF CACHE BOOL " " FORCE)
-# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb ext_build/tbb)
+# Build TBB
+set(TBB_BUILD_STATIC ON CACHE BOOL " " FORCE)
+set(TBB_BUILD_SHARED OFF CACHE BOOL " " FORCE)
+set(TBB_BUILD_TBBMALLOC OFF CACHE BOOL " " FORCE)
+set(TBB_BUILD_TBBMALLOC_PROXY OFF CACHE BOOL " " FORCE)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb ext_build/tbb)
 
 include_directories(
   # Eigen
@@ -91,7 +91,7 @@ include_directories(
   # NanoGUI
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/nanogui/include
   # Intel Thread Building Blocks
-  # ${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb/include
   # Disjoint set data structure
   # ${CMAKE_CURRENT_SOURCE_DIR}/ext/dset
   # Parallel stable sort
