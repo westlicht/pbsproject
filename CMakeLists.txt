@@ -158,8 +158,7 @@ add_executable(pbsproject #MACOSX_BUNDLE
   ext/stb/stb_image_write.cpp
   ${EXTRA_SOURCE})
 
-#target_link_libraries(pbsproject tbb_static nanogui ${NANOGUI_EXTRA_LIBS})
-target_link_libraries(pbsproject nanogui ${NANOGUI_EXTRA_LIBS})
+target_link_libraries(pbsproject tbb_static nanogui ${NANOGUI_EXTRA_LIBS})
 
 #set_target_properties(pbsproject PROPERTIES OUTPUT_NAME "PBS Project")
 
