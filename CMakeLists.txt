@@ -106,6 +106,8 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyformat
   # cxxopts
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/cxxopts
+  # stb
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/stb
   # Resource file
   ${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -153,6 +155,7 @@ add_executable(pbsproject #MACOSX_BUNDLE
   src/Vector.h
   src/VoxelGrid.h
   src/main.cpp
+  ext/stb/stb_image_write.cpp
   ${EXTRA_SOURCE})
 
 #target_link_libraries(pbsproject tbb_static nanogui ${NANOGUI_EXTRA_LIBS})
