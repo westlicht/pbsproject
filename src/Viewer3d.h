@@ -1,6 +1,11 @@
 #include "Common.h"
 #include "SPH3d.h"
+#include "Painter.h"
+#include "ObjReader.h"
+#include "ParticleMesher.h"
+#include "Timer.h"
 
+#include <nanogui/CheckBox.h>
 #include <nanogui/combobox.h>
 #include <nanogui/glutil.h>
 #include <nanogui/label.h>
@@ -9,6 +14,8 @@
 #include <nanogui/slider.h>
 #include <nanogui/textbox.h>
 #include <nanogui/window.h>
+
+#include <stb_image_write.h>
 
 #include <memory>
 #include <chrono>
@@ -21,6 +28,8 @@ public:
         initializeGUI();
         _startTime = std::chrono::high_resolution_clock::now();
         _lastTime = 0;
+
+        _viewOrigin = _sph.bounds().center();
     }
 
     ~Viewer3d() {
@@ -67,7 +76,55 @@ public:
         return true;
     }
 
+    bool keyboardEvent(int key, int scancode, int action, int modifiers) override {
+        if (!Screen::keyboardEvent(key, scancode, action, modifiers)) {
+            if (action == GLFW_PRESS) {
+                switch (key) {
+                case GLFW_KEY_ESCAPE:
+                    setVisible(false);
+                    break;
+                case GLFW_KEY_TAB:
+                    _window->setVisible(!_window->visible());
+                    break;
+                case GLFW_KEY_HOME:
+                    std::cout << "rewind" << std::endl;
+                    break;
+                case GLFW_KEY_SPACE:
+                    _isRunning = !_isRunning;
+                    break;
+                }
+            }
+        }
+        return true;
+    }
+
+
     void drawContents() override {
+
+        if (_isAnimation) {
+            float dt = 0.001f;
+            int steps = int((1.f / _animationFPS) / dt);
+            pbs::DBG("steps = %d", steps);
+            for (int i = 0; i < steps; ++i) {
+                pbs::Timer timer;
+                _sph.update(dt);
+                pbs::DBG("timestep took %s", timer.elapsedString());
+            }
+            createMesh();
+        } else if (_isRunning) {
+            pbs::Timer timer;
+            _sph.update(0.001f);
+            pbs::DBG("timestep took %s", timer.elapsedString());
+            #if 0
+            double dt = 0.01;
+            auto currentTime = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - _startTime).count();
+            while (_lastTime + dt < currentTime) {
+                std::cout << "timestep"
+                _sph.update(dt*0.3);
+                _lastTime += dt;
+            }
+            #endif
+        }
 
         Matrix4f view, proj, model;
         view = lookAt(Vector3f(0, 0, _viewDistance), Vector3f(0, 0, 0), Vector3f(0, 1, 0));
@@ -78,35 +135,28 @@ public:
 
         model.setIdentity();
         model = translate(model, -_viewOrigin);
-        //model = translate(model, Vector3f(0.f, -0.5f, 0.0f));
         model = _arcball.matrix() * model;
 
         Matrix4f mvp = proj * view * model;
 
         _gridPainter->draw(mvp);
-        _boxPainter->draw(mvp, pbs::Box3f(pbs::Vector3f(-0.1f), pbs::Vector3f(0.1f)));
+        //_boxPainter->draw(mvp, pbs::Box3f(pbs::Vector3f(-0.1f), pbs::Vector3f(0.1f)));
+        _boxPainter->draw(mvp, _sph.bounds());
 
-        pbs::Vector3i size(10);
-        MatrixXf positions(3, size.prod());
-        int index = 0;
-        for (int z = 0; z < size.z(); ++z) {
-            for (int y = 0; y < size.y(); ++y) {
-                for (int x = 0; x < size.x(); ++x) {
-                    pbs::Vector3f p((x + 0.5f) / size.x(), (y + 0.5f) / size.y(), (z + 0.5f) / size.z());
-                    p = (p - pbs::Vector3f(0.5f)) * 0.1f;
-                    positions.col(index++) = p;
-                }
-            }
+        if (_showParticles) {
+            _particlePainter->draw(mvp, _sph.positions());
         }
-        _particlePainter->draw(mvp, positions);
+
+        if (_showMeshes) {
+            _meshPainter->draw(mvp);
+        }
+
+
+        if (_isAnimation) {
+            screenshot(tfm::format("frame%04d.png", _animationFrame++));
+        }
 
 #if 0
-        double dt = 0.01;
-        auto currentTime = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - _startTime).count();
-        while (_lastTime + dt < currentTime) {
-            _sph.update(dt*0.3);
-            _lastTime += dt;
-        }
 
         auto ctx = mNVGContext;
 
@@ -179,9 +229,29 @@ public:
         _viscosityTextBox = new TextBox(panel);
         _viscosityTextBox->setFixedSize(Vector2i(80, 25));
 
-        _gridPainter.reset(new GridPainter());
-        _boxPainter.reset(new BoxPainter());
-        _particlePainter.reset(new ParticlePainter());
+        new Label(_window, "Actions", "sans-bold");
+        Button *createMeshButton = new Button(_window, "Create Mesh");
+        createMeshButton->setCallback([&] () { createMesh(); refresh(); });
+        Button *clearMeshButton = new Button(_window, "Clear Mesh");
+        clearMeshButton->setCallback([&] () { clearMesh(); refresh(); });
+        Button *renderAnimationButton = new Button(_window, "Render Animation");
+        renderAnimationButton->setCallback([&] () { renderAnimation(); refresh(); });
+        
+        _gridPainter.reset(new pbs::GridPainter());
+        _boxPainter.reset(new pbs::BoxPainter());
+        _particlePainter.reset(new pbs::ParticlePainter());
+        _meshPainter.reset(new pbs::MeshPainter());
+
+        new Label(_window, "Display", "sans-bold");
+        CheckBox *showParticlesCheckBox = new CheckBox(_window, "Show Particles");
+        showParticlesCheckBox->setChecked(_showParticles);
+        showParticlesCheckBox->setCallback([&] (bool b) { _showParticles = b; refresh(); });
+        CheckBox *showMeshesCheckBox = new CheckBox(_window, "Show Meshes");
+        showMeshesCheckBox->setChecked(_showMeshes);
+        showMeshesCheckBox->setCallback([&] (bool b) { _showMeshes = b; refresh(); });
+
+        //auto mesh = pbs::ObjReader::load("test.obj");
+        //_meshPainter->setMesh(mesh);
 
         refresh();
 
@@ -193,155 +263,37 @@ public:
 
 
 private:
-    // Painter for drawing a grid in XZ plane
-    struct GridPainter {
-        GLShader shader;
-        int vertexCount;
+    void createMesh() {
+        pbs::Mesh mesh = pbs::ParticleMesher::createMeshIsotropic(
+            _sph.positions(),
+            _sph.bounds(),
+            pbs::Vector3i(256),
+            _sph.smoothRadius(),
+            _sph.particleMass() / _sph.restDensity(),
+            0.1f
+        );
+        //pbs::ObjWriter::save(mesh, "mc.obj");
+        _meshPainter->setMesh(mesh);
+    }
 
-        GridPainter(int size = 10, float spacing = 0.1f)
-        {
-            shader.init(
-                "GridPainter",
+    void clearMesh() {
+        _meshPainter->setMesh(pbs::Mesh());
 
-                /* Vertex shader */
-                "#version 330\n"
-                "uniform mat4 mvp;\n"
-                "in vec3 position;\n"
-                "void main() {\n"
-                "    gl_Position = mvp * vec4(position, 1.0);\n"
-                "}",
+        screenshot("test.png");
+    }
 
-                /* Fragment shader */
-                "#version 330\n"
-                "out vec4 out_color;\n"
-                "void main() {\n"
-                "    out_color = vec4(vec3(1.0), 0.4);\n"
-                "}"
-            );
+    void renderAnimation() {
+        _window->setVisible(false);
+        _isAnimation = true;
+        _animationFrame = 0;
+    }
 
-            MatrixXf positions(3, (4 * (size * 2 + 1)));
+    void screenshot(const std::string &filename) {
+        std::unique_ptr<unsigned char[]> pixels(new unsigned char[mSize.prod() * 3]);
+        glReadPixels(0, 0, mSize.x(), mSize.y(), GL_RGB, GL_UNSIGNED_BYTE, pixels.get());
 
-            int index = 0;
-            for (int i = -size; i <= size; ++i) {
-                positions.col(index++) = Vector3f(i, 0.f, -size) * spacing;
-                positions.col(index++) = Vector3f(i, 0.f,  size) * spacing;
-                positions.col(index++) = Vector3f(-size, 0.f, i) * spacing;
-                positions.col(index++) = Vector3f( size, 0.f, i) * spacing;
-            }
-            vertexCount = index;
-
-            shader.bind();
-            shader.uploadAttrib("position", positions);
-        }
-
-        void draw(const Matrix4f &mvp) {
-            shader.bind();
-            shader.setUniform("mvp", mvp);
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            shader.drawArray(GL_LINES, 0, vertexCount);
-            glDisable(GL_BLEND);
-        }
-    };
-
-    // Painter for drawing a bounding box
-    struct BoxPainter {
-        GLShader shader;
-
-        BoxPainter() {
-            shader.init(
-                "BoxPainter",
-
-                /* Vertex shader */
-                "#version 330\n"
-                "uniform mat4 mvp;\n"
-                "in vec3 position;\n"
-                "void main() {\n"
-                "    gl_Position = mvp * vec4(position, 1.0);\n"
-                "}",
-
-                /* Fragment shader */
-                "#version 330\n"
-                "out vec4 out_color;\n"
-                "void main() {\n"
-                "    out_color = vec4(vec3(1.0), 0.4);\n"
-                "}"
-            );
-        }
-
-        void draw(const Matrix4f &mvp, const pbs::Box3f &box) {
-            MatrixXf positions(3, 24);
-            positions.col(0)  = pbs::Vector3f(box.min.x(), box.min.y(), box.min.z());
-            positions.col(1)  = pbs::Vector3f(box.max.x(), box.min.y(), box.min.z());
-            positions.col(2)  = pbs::Vector3f(box.min.x(), box.max.y(), box.min.z());
-            positions.col(3)  = pbs::Vector3f(box.max.x(), box.max.y(), box.min.z());
-            positions.col(4)  = pbs::Vector3f(box.min.x(), box.min.y(), box.min.z());
-            positions.col(5)  = pbs::Vector3f(box.min.x(), box.max.y(), box.min.z());
-            positions.col(6)  = pbs::Vector3f(box.max.x(), box.min.y(), box.min.z());
-            positions.col(7)  = pbs::Vector3f(box.max.x(), box.max.y(), box.min.z());
-
-            positions.col(8)  = pbs::Vector3f(box.min.x(), box.min.y(), box.max.z());
-            positions.col(9)  = pbs::Vector3f(box.max.x(), box.min.y(), box.max.z());
-            positions.col(10) = pbs::Vector3f(box.min.x(), box.max.y(), box.max.z());
-            positions.col(11) = pbs::Vector3f(box.max.x(), box.max.y(), box.max.z());
-            positions.col(12) = pbs::Vector3f(box.min.x(), box.min.y(), box.max.z());
-            positions.col(13) = pbs::Vector3f(box.min.x(), box.max.y(), box.max.z());
-            positions.col(14) = pbs::Vector3f(box.max.x(), box.min.y(), box.max.z());
-            positions.col(15) = pbs::Vector3f(box.max.x(), box.max.y(), box.max.z());
-
-            positions.col(16) = pbs::Vector3f(box.min.x(), box.min.y(), box.min.z());
-            positions.col(17) = pbs::Vector3f(box.min.x(), box.min.y(), box.max.z());
-            positions.col(18) = pbs::Vector3f(box.max.x(), box.min.y(), box.min.z());
-            positions.col(19) = pbs::Vector3f(box.max.x(), box.min.y(), box.max.z());
-            positions.col(20) = pbs::Vector3f(box.min.x(), box.max.y(), box.min.z());
-            positions.col(21) = pbs::Vector3f(box.min.x(), box.max.y(), box.max.z());
-            positions.col(22) = pbs::Vector3f(box.max.x(), box.max.y(), box.min.z());
-            positions.col(23) = pbs::Vector3f(box.max.x(), box.max.y(), box.max.z());
-
-            shader.bind();
-            shader.uploadAttrib("position", positions);
-            shader.setUniform("mvp", mvp);
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            shader.drawArray(GL_LINES, 0, 24);
-            glDisable(GL_BLEND);
-        }
-    };
-
-    // Painter for drawing particles
-    struct ParticlePainter {
-        GLShader shader;
-
-        ParticlePainter() {
-            shader.init(
-                "ParticlePainter",
-
-                /* Vertex shader */
-                "#version 330\n"
-                "uniform mat4 mvp;\n"
-                "in vec3 position;\n"
-                "void main() {\n"
-                "    gl_Position = mvp * vec4(position, 1.0);\n"
-                "}",
-
-                /* Fragment shader */
-                "#version 330\n"
-                "out vec4 out_color;\n"
-                "void main() {\n"
-                "    out_color = vec4(1.0);\n"
-                "}"
-            );
-        }
-
-        void draw(const Matrix4f &mvp, const MatrixXf &positions) {
-            shader.bind();
-            shader.uploadAttrib("position", positions);
-            shader.setUniform("mvp", mvp);
-            glPointSize(2);
-            glEnable(GL_DEPTH_TEST);
-            shader.drawArray(GL_POINTS, 0, positions.cols());
-        }
-    };
+        stbi_write_png(filename.c_str(), mSize.x(), mSize.y(), 3, pixels.get() + (3 * mSize.x() * (mSize.y() - 1)), -3 * mSize.x());
+    }
 
     Window *_window;
     ComboBox *_sceneComboBox;
@@ -352,14 +304,22 @@ private:
 
     std::vector<std::string> _sceneNames;
 
+    bool _showParticles = true;
+    bool _showMeshes = true;
+    bool _isRunning = false;
     bool _leftButton = false;
     Arcball _arcball;
 
+    bool _isAnimation = false;
+    float _animationFPS = 60.f;
+    int _animationFrame;
+
     float _viewDistance = 5.f;
     Vector3f _viewOrigin = Vector3f(0.f, 0.f, 0.f);
-    std::unique_ptr<GridPainter> _gridPainter;
-    std::unique_ptr<BoxPainter> _boxPainter;
-    std::unique_ptr<ParticlePainter> _particlePainter;
+    std::unique_ptr<pbs::GridPainter> _gridPainter;
+    std::unique_ptr<pbs::BoxPainter> _boxPainter;
+    std::unique_ptr<pbs::ParticlePainter> _particlePainter;
+    std::unique_ptr<pbs::MeshPainter> _meshPainter;
 
     pbs::sph3d::SPH _sph;
 
