@@ -79,6 +79,12 @@ int toInt(const std::string &str);
 unsigned int toUInt(const std::string &str);
 float toFloat(const std::string &str);
 
+// Convert a time value in milliseconds into a human-readable string
+std::string timeString(double time, bool precise = false);
+
+// Convert a memory amount in bytes into a human-readable string
+std::string memString(size_t size, bool precise = false);
+
 // Debugging ------------------------------------------------------------------
 
 class Exception : public std::runtime_error {

@@ -1,5 +1,8 @@
 #include "Common.h"
 
+#include <sstream>
+#include <iomanip>
+
 namespace pbs {
 
 std::vector<std::string> tokenize(const std::string &string, const std::string &delim, bool includeEmpty) {
@@ -59,5 +62,48 @@ float toFloat(const std::string &str) {
         throw Exception("Could not parse floating point value \"%s\"", str);
     return result;
 }
+
+std::string timeString(double time, bool precise) {
+    if (std::isnan(time) || std::isinf(time))
+        return "inf";
+
+    std::string suffix = "ms";
+    if (time > 1000) {
+        time /= 1000; suffix = "s";
+        if (time > 60) {
+            time /= 60; suffix = "m";
+            if (time > 60) {
+                time /= 60; suffix = "h";
+                if (time > 12) {
+                    time /= 12; suffix = "d";
+                }
+            }
+        }
+    }
+
+    std::ostringstream os;
+    os << std::setprecision(precise ? 4 : 1)
+       << std::fixed << time << suffix;
+
+    return os.str();
+}
+
+std::string memString(size_t size, bool precise) {
+    double value = (double) size;
+    const char *suffixes[] = {
+        "B", "KiB", "MiB", "GiB", "TiB", "PiB"
+    };
+    int suffix = 0;
+    while (suffix < 5 && value > 1024.0f) {
+        value /= 1024.0f; ++suffix;
+    }
+
+    std::ostringstream os;
+    os << std::setprecision(suffix == 0 ? 0 : (precise ? 4 : 1))
+       << std::fixed << value << " " << suffixes[suffix];
+
+    return os.str();
+}
+
 
 } // namespace pbs
