@@ -196,10 +196,9 @@ Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f 
     DBG("Building surface ...");
     timer.reset();
     MarchingCubes<float> mc;
-    mc.GenerateSurface(voxelGrid.data(), isoLevel, cells.x(), cells.y(), cells.z(), 1.f / cells.x(), 1.f / cells.y(), 1.f / cells.z());
+    Mesh mesh = mc.generateIsoSurface(voxelGrid.data(), isoLevel, bounds, cells);
     DBG("Took %s", timer.elapsedString());
 
-    Mesh mesh = mc.mesh();
     return std::move(mesh);
 }
 

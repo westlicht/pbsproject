@@ -33,11 +33,10 @@ static void marchingCubes() {
 
     MarchingCubes<float> mc;
 
-    mc.GenerateSurface(grid.data(), 0.f, size.x() - 1, size.y() - 1, size.z() - 1, 1.f, 1.f, 1.f);
+    Mesh mesh = mc.generateIsoSurface(grid.data(), 0.f, Box3f(0.f, 1.f), size - Vector3i(1));
 
-    DBG("Success = %b", mc.IsSurfaceValid());
+    //mc.GenerateSurface(grid.data(), 0.f,  size.x() - 1, size.y() - 1, size.z() - 1, 1.f, 1.f, 1.f);
 
-    Mesh mesh = mc.mesh();
     ObjWriter::save(mesh, "mc.obj");
 
 }

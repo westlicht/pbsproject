@@ -323,6 +323,16 @@ template <typename _VectorType> struct TBox {
         return result;
     }
 
+    /// Return box expanded by v
+    TBox expanded(const VectorType &v) const {
+        return TBox(min - v, max + v);
+    }
+
+    /// Expands the box in each dimension by s
+    TBox expanded(float s) const {
+        return expanded(VectorType(s));
+    }
+
     friend std::ostream &operator<<(std::ostream &os, const BoxType &b) {
         os << tfm::format("Box[min=%s, max=%s]", b.min, b.max);
         return os;
