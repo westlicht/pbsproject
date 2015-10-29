@@ -250,6 +250,11 @@ public:
         showMeshesCheckBox->setChecked(_showMeshes);
         showMeshesCheckBox->setCallback([&] (bool b) { _showMeshes = b; refresh(); });
 
+        new Label(_window, "Options", "sans-bold");
+        CheckBox *anisotropicMeshCheckBox = new CheckBox(_window, "Anisotropic Mesh");
+        anisotropicMeshCheckBox->setChecked(_anisotropicMesh);
+        anisotropicMeshCheckBox->setCallback([&] (bool b) { _anisotropicMesh = b; refresh(); });
+
         //auto mesh = pbs::ObjReader::load("test.obj");
         //_meshPainter->setMesh(mesh);
 
@@ -264,14 +269,23 @@ public:
 
 private:
     void createMesh() {
-        pbs::Mesh mesh = pbs::ParticleMesher::createMeshIsotropic(
-            _sph.positions(),
-            _sph.bounds(),
-            pbs::Vector3i(256),
-            _sph.smoothRadius(),
-            _sph.particleMass() / _sph.restDensity(),
-            0.1f
-        );
+        pbs::ParticleMesher::Parameters params;
+        params.supportParticles = _sph.parameters().supportParticles;
+        params.particlesPerUnitVolume = _sph.parameters().particlesPerUnitVolume;
+        params.restDensity = _sph.parameters().restDensity;
+        params.restSpacing = _sph.parameters().restSpacing;
+        params.particleMass = _sph.parameters().particleMass;
+        params.h = _sph.parameters().h;
+        params.isoLevel = 0.2f;
+
+        pbs::MatrixXf positions = _sph.positions();
+        pbs::Box3f bounds = _sph.bounds().expanded(_sph.bounds().extents() * 0.05f); // expand bounds by 5% of diagonal
+        pbs::Vector3i cells(256);
+
+        pbs::Mesh mesh = _anisotropicMesh ?
+            pbs::ParticleMesher::createMeshAnisotropic(positions, bounds, cells, params) :
+            pbs::ParticleMesher::createMeshIsotropic(positions, bounds, cells, params);
+
         //pbs::ObjWriter::save(mesh, "mc.obj");
         _meshPainter->setMesh(mesh);
     }
@@ -306,6 +320,7 @@ private:
 
     bool _showParticles = true;
     bool _showMeshes = true;
+    bool _anisotropicMesh = true;
     bool _isRunning = false;
     bool _leftButton = false;
     Arcball _arcball;

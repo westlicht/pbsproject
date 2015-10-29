@@ -1,4 +1,5 @@
 #include "ParticleMesher.h"
+#include "Common.h"
 #include "Mesh.h"
 #include "VoxelGrid.h"
 #include "MarchingCubes.h"
@@ -7,6 +8,9 @@
 #include "Timer.h"
 
 #include <tbb/tbb.h>
+
+#include <Eigen/Geometry>
+#include <Eigen/SVD>
 
 #include <atomic>
 
@@ -143,13 +147,16 @@ private:
     std::vector<size_t> _indices;
 };
 
-Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f &bounds, const Vector3i &cells, float smoothRadius, float normalization, float isoLevel) {
+Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f &bounds, const Vector3i &cells, const Parameters &params) {
+    float h = params.h;
+    float h2 = sqr(h);
 
     DBG("Generating mesh from particles (isotropic kernel)");
+    Timer timer;
 
     DBG("Building acceleration grid ...");
-    Timer timer;
-    Grid grid(positions, bounds, cells, [smoothRadius] (const Vector3f &p) { return Box3f(p - Vector3f(smoothRadius), p + Vector3f(smoothRadius)); });
+    timer.reset();
+    Grid grid(positions, bounds, cells, [h] (const Vector3f &p) { return Box3f(p - Vector3f(h), p + Vector3f(h)); });
     DBG("Took %s", timer.elapsedString());
 
     DBG("Building voxel grid ...");
@@ -158,10 +165,8 @@ Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f 
     Vector3f min = bounds.min;
     Vector3f extents = bounds.extents();
 
-    //smoothRadius *= 0.5;
-    float poly6Constant = 365.f / (64.f * M_PI * std::pow(smoothRadius, 9.f));
-    normalization *= poly6Constant;
-    float h2 = sqr(smoothRadius);
+    float poly6Constant = 365.f / (64.f * M_PI * std::pow(h, 9.f));
+    float normalization = params.particleMass / params.restDensity * poly6Constant;
 #if USE_TBB
     tbb::parallel_for(0, (cells + Vector3i(1)).prod(), 1, [cells, min, extents, poly6Constant, h2, normalization, &grid, &positions, &voxelGrid] (int i) {
         int x = i % (cells.x() + 1);
@@ -182,7 +187,6 @@ Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f 
                 });
                 c *= normalization;
                 voxelGrid(x, y, z) = c;
-                //DBG("c = %f", c);
 #if USE_TBB
     });
 #else
@@ -196,10 +200,14 @@ Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f 
     DBG("Building surface ...");
     timer.reset();
     MarchingCubes<float> mc;
-    Mesh mesh = mc.generateIsoSurface(voxelGrid.data(), isoLevel, bounds, cells);
+    Mesh mesh = mc.generateIsoSurface(voxelGrid.data(), params.isoLevel, bounds, cells);
     DBG("Took %s", timer.elapsedString());
 
     return std::move(mesh);
+}
+
+Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bounds, const Vector3i &cells, const Parameters &params) {
+    return Mesh();
 }
 
 } // namespace pbs

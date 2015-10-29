@@ -126,6 +126,16 @@ public:
         Vector3f gravity = Vector3f(0.f, -9.81f, 0.f);
     };
 
+    // Simulation parameters
+    struct Parameters {
+        int supportParticles;
+        int particlesPerUnitVolume;
+        float restDensity;
+        float restSpacing;
+        float particleMass;
+        float h;
+    };
+
     // Kernels
     struct Kernel {
         float h;
@@ -363,11 +373,20 @@ public:
 
     const Box3f &bounds() const { return _bounds; }
     const std::vector<Particle> &particles() const { return _particles; }
-    float smoothRadius() const { return _h; }
-    float restDensity() const { return Constants::restDensity; }
-    float particleMass() const { return _particleMass; }
 
-    // Returns particle positions in matrix form.
+    // Returns a set of simulation parameters
+    Parameters parameters() const {
+        Parameters params;
+        params.supportParticles = Constants::supportParticles;
+        params.particlesPerUnitVolume = Constants::particlesPerUnitVolume;
+        params.restDensity = Constants::restDensity;
+        params.restSpacing = _restSpacing;
+        params.particleMass = _particleMass;
+        params.h = _h;
+        return params;
+    }
+
+    // Returns particle positions in matrix form
     MatrixXf positions() const {
         MatrixXf positions;
         positions.resize(3, _particles.size());
