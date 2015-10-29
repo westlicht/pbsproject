@@ -1,4 +1,4 @@
-// Based on code from  Raghavendra Chandrashekara, Paul Bourke and Cory Gene Bloyd
+// Based on code from Raghavendra Chandrashekara, Paul Bourke and Cory Gene Bloyd
 
 #include "MarchingCubes.h"
 #include "Vector.h"
@@ -132,6 +132,9 @@ Mesh MarchingCubes<T>::generateIsoSurface(const T *scalarField, T isoLevel, cons
         Vector3f v1(mesh.vertices().col(id1) - mesh.vertices().col(id0));
         Vector3f v2(mesh.vertices().col(id2) - mesh.vertices().col(id0));
         Vector3f normal(v1.cross(v2).normalized());
+        if (std::isnan(normal.x()) || std::isnan(normal.y()) || std::isnan(normal.z())) {
+            continue;
+        }
         mesh.normals().col(id0) += normal;
         mesh.normals().col(id1) += normal;
         mesh.normals().col(id2) += normal;
