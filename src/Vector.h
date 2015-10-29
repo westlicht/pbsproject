@@ -22,6 +22,7 @@
 
 namespace pbs {
 
+// Vector class.
 template <typename _Scalar, int _Dimension> struct TVector : public Eigen::Matrix<_Scalar, _Dimension, 1> {
 public:
     enum {

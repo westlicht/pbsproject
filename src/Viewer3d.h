@@ -22,6 +22,7 @@
 
 using namespace nanogui;
 
+// Main screen for 3D viewer.
 class Viewer3d : public Screen {
 public:
     Viewer3d(): Screen(Vector2i(1200, 800), "PBS Project") {

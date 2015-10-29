@@ -7,6 +7,7 @@
 namespace pbs {
 
 // Holds a triangle mesh.
+// Data is stored in columns of the matrices.
 class Mesh {
 public:
     const MatrixXf &vertices() const { return _vertices; }

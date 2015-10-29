@@ -15,6 +15,8 @@
 
 using namespace nanogui;
 
+
+// Main screen for 2D viewer.
 class Viewer2d : public Screen {
 public:
     Viewer2d(): Screen(Vector2i(1200, 800), "PBS Project") {

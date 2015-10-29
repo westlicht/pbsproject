@@ -8,7 +8,7 @@ namespace pbs {
 
 class Mesh;
 
-// Marching cubes mesh generation.
+// Marching cubes mesh isosurface extraction.
 template<typename T>
 class MarchingCubes {
 public:

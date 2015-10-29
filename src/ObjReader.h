@@ -9,6 +9,7 @@ namespace pbs {
 
 class Mesh;
 
+// Wavefront OBJ reader.
 class ObjReader {
 public:
     static Mesh load(const std::string &filename);

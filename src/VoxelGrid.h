@@ -4,6 +4,7 @@
 
 namespace pbs {
 
+// Simple 3D voxel grid.
 template<typename T>
 class VoxelGrid {
 public:

@@ -7,7 +7,7 @@
 
 namespace pbs {
 
-// Painter for drawing a grid in XZ plane
+// Painter for drawing a grid in XZ plane.
 struct GridPainter {
     GLShader shader;
     int vertexCount = 0;
@@ -56,7 +56,7 @@ struct GridPainter {
     }
 };
 
-// Painter for drawing a bounding box
+// Painter for drawing a bounding box.
 struct BoxPainter {
     GLShader shader;
 
@@ -118,7 +118,7 @@ struct BoxPainter {
     }
 };
 
-// Painter for drawing particles
+// Painter for drawing particles.
 struct ParticlePainter {
     GLShader shader;
 

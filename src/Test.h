@@ -35,8 +35,6 @@ static void marchingCubes() {
 
     Mesh mesh = mc.generateIsoSurface(grid.data(), 0.f, Box3f(0.f, 1.f), size - Vector3i(1));
 
-    //mc.GenerateSurface(grid.data(), 0.f,  size.x() - 1, size.y() - 1, size.z() - 1, 1.f, 1.f, 1.f);
-
     ObjWriter::save(mesh, "mc.obj");
 
 }
