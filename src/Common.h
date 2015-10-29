@@ -61,6 +61,11 @@ static inline T clamp(T x, T lo, T hi)  {
     return std::max(lo, std::min(hi, x));
 }
 
+template<typename S, typename T>
+static inline T lerp(S t, const T &a, const T &b) {
+    return (S(1) - t) * a + t * b;
+}
+
 static inline float unitToRange(float x, float lo, float hi) {
     return lo + clamp(x, 0.f, 1.f) * (hi - lo);
 }
