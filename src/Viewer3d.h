@@ -5,7 +5,7 @@
 #include "ParticleMesher.h"
 #include "Timer.h"
 
-#include <nanogui/CheckBox.h>
+#include <nanogui/checkbox.h>
 #include <nanogui/combobox.h>
 #include <nanogui/glutil.h>
 #include <nanogui/label.h>
