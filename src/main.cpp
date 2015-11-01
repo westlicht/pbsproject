@@ -1,6 +1,6 @@
-#include "Test.h"
 #include "Viewer2d.h"
 #include "Viewer3d.h"
+//#include "Test.h"
 
 #include <cxxopts.h>
 
@@ -34,8 +34,8 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    pbs::test::obj();
-    pbs::test::marchingCubes();
+    //pbs::test::obj();
+    //pbs::test::marchingCubes();
 
     nanogui::init();
 
