@@ -321,7 +321,7 @@ private:
 
     bool _showParticles = true;
     bool _showMeshes = true;
-    bool _anisotropicMesh = true;
+    bool _anisotropicMesh = false;
     bool _isRunning = false;
     bool _leftButton = false;
     Arcball _arcball;
