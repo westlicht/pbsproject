@@ -74,6 +74,17 @@ static inline float rangeToUnit(float x, float lo, float hi) {
     return clamp((x - lo) / (hi - lo), 0.f, 1.f);
 }
 
+static inline uint32_t nextPowerOfTwo(uint32_t x) {
+    x--;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    x++;
+    return x;
+}
+
 // String utilities -----------------------------------------------------------
 
 std::vector<std::string> tokenize(const std::string &s, const std::string &delim = ", ", bool includeEmpty = false);
