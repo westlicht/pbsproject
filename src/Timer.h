@@ -29,6 +29,18 @@ public:
         return timeString(elapsed(), precise);
     }
 
+    // Returns elapsed milliseconds and resets timer
+    double lap() {
+        double result = elapsed();
+        reset();
+        return result;
+    }
+
+    // Returns elapsed time as a string and resets timer
+    std::string lapString(bool precise = false) {
+        return timeString(lap(), precise);
+    }
+
 private:
     std::chrono::system_clock::time_point _start;
 };
