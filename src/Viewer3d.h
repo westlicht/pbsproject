@@ -25,7 +25,7 @@ using namespace nanogui;
 // Main screen for 3D viewer.
 class Viewer3d : public Screen {
 public:
-    Viewer3d(): Screen(Vector2i(1200, 800), "PBS Project") {
+    Viewer3d() : Screen(Vector2i(1200, 800), "PBS Project"), _sph(pbs::Scene::load("../scenes/drop.json")) {
         initializeGUI();
         _startTime = std::chrono::high_resolution_clock::now();
         _lastTime = 0;
