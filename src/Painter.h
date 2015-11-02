@@ -151,6 +151,74 @@ struct ParticlePainter {
     }
 };
 
+// Painter for drawing particle spheres.
+struct SphereParticlePainter {
+    GLShader shader;
+
+    SphereParticlePainter() {
+        shader.init(
+            "ParticlePainter",
+            // Vertex shader
+            "#version 330\n"
+            "uniform mat4 mv;\n"
+            "in vec3 position;\n"
+            "out vec4 vPosition;\n"
+            "void main() {\n"
+            "    vPosition = mv * vec4(position, 1.0);\n"
+            "}",
+            // Fragment shader
+            "#version 330\n"
+            "in vec2 gPosition;\n"
+            "out vec4 out_color;\n"
+            "void main() {\n"
+            "    vec3 n = vec3(2.0 * gPosition, 0.0);\n"
+            "    float r2 = dot(n.xy, n.xy);\n"
+            "    if (r2 > 1.0) discard;\n"
+            "    n.z = 1.0 - sqrt(r2);\n"
+            "    vec3 L = normalize(vec3(1.0));\n"
+            "    float d = max(0.0, dot(L, n));\n"
+            "    out_color = vec4(d * vec3(0.6,0.6,1.0), 0.0);\n"
+            //"    out_color = vec4(gPosition + 0.5, 0.0, 0.0);\n"
+            "}",
+            // Geometry shader
+            "#version 330\n"
+            "layout (points) in;\n"
+            "layout (triangle_strip) out;\n"
+            "layout (max_vertices = 4) out;\n"
+            "uniform mat4 proj;\n"
+            "uniform float particleSize;\n"
+            "in vec4 vPosition[];\n"
+            "out vec2 gPosition;\n"
+            "void main() {\n"
+            "    vec4 p = vPosition[0];\n"
+            "    gPosition = vec2(-0.5, -0.5);\n"
+            "    gl_Position = proj * vec4(p.xy + gPosition * particleSize, p.zw);\n"
+            "    EmitVertex();\n"
+            "    gPosition = vec2(-0.5, 0.5);\n"
+            "    gl_Position = proj * vec4(p.xy + gPosition * particleSize, p.zw);\n"
+            "    EmitVertex();\n"
+            "    gPosition = vec2(0.5, -0.5);\n"
+            "    gl_Position = proj * vec4(p.xy + gPosition * particleSize, p.zw);\n"
+            "    EmitVertex();\n"
+            "    gPosition = vec2(0.5, 0.5);\n"
+            "    gl_Position = proj * vec4(p.xy + gPosition * particleSize, p.zw);\n"
+            "    EmitVertex();\n"
+            "    EndPrimitive();\n"
+            "}"
+        );
+    }
+
+    void draw(const Matrix4f &mv, const Matrix4f &proj, const MatrixXf &positions, float particleSize = 0.03f) {
+        shader.bind();
+        shader.uploadAttrib("position", positions);
+        shader.setUniform("mv", mv);
+        shader.setUniform("proj", proj);
+        shader.setUniform("particleSize", particleSize);
+        glEnable(GL_DEPTH_TEST);
+        shader.drawArray(GL_POINTS, 0, positions.cols());
+    }
+};
+
 // Painter for drawing a mesh.
 struct MeshPainter {
     GLShader shader;
