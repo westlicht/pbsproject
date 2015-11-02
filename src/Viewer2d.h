@@ -15,7 +15,6 @@
 
 using namespace nanogui;
 
-
 // Main screen for 2D viewer.
 class Viewer2d : public Screen {
 public:

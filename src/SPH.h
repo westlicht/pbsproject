@@ -10,8 +10,8 @@ namespace pbs {
 namespace sph2d {
 
 struct Particle {
-    Vector2f p;
-    Vector2f v;
+    Vector2f p; // position
+    Vector2f v; // velocity
     Vector2f force;
     float density;
 
