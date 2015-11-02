@@ -160,6 +160,7 @@ add_executable(pbsproject #MACOSX_BUNDLE
   src/VoxelGrid.h
   src/main.cpp
   ext/stb/stb_image_write.cpp
+  ext/json11/json11.cpp
   ${EXTRA_SOURCE})
 
 target_link_libraries(pbsproject tbb_static nanogui ${NANOGUI_EXTRA_LIBS})
