@@ -29,8 +29,8 @@ struct Particle {
     Particle(const Vector3f &p) : p(p), v(0.f) {}
 };
 
-//typedef std::vector<Particle, AlignedAllocator<Particle, sizeof(Particle)>> ParticleVector;
-typedef std::vector<Particle> ParticleVector;
+typedef std::vector<Particle, AlignedAllocator<Particle, 64>> ParticleVector;
+//typedef std::vector<Particle> ParticleVector;
 
 class Grid {
 public:
@@ -44,7 +44,6 @@ public:
             nextPowerOfTwo(int(std::floor(_bounds.extents().y() / _cellSize)) + 1),
             nextPowerOfTwo(int(std::floor(_bounds.extents().z() / _cellSize)) + 1)
         );
-
 
         _cellOffset.resize(_size.prod() + 1);
 
@@ -64,48 +63,28 @@ public:
         return i.z() * (_size.x() * _size.y()) + i.y() * _size.x() + i.x();
     }
 
+    inline uint32_t indexMorton(const Vector3i &index) {
+        return Morton3D::morton10bit(index.x(), index.y(), index.z());
+    }
+
     inline uint32_t indexMorton(const Vector3f &pos) {
-        return Morton3D::morton10bit(
-            int(std::floor((pos.x() - _bounds.min.x()) * _invCellSize)),
-            int(std::floor((pos.y() - _bounds.min.y()) * _invCellSize)),
-            int(std::floor((pos.z() - _bounds.min.z()) * _invCellSize))
-        );
+        return indexMorton(index(pos));
     }
 
     void update(ParticleVector &particles) {
-#if 0
-        // Sort particles
-        static int counter = 0;
-        if (counter++ % 50 == 0) {
-            for (size_t i = 0; i < particles.size(); ++i) {
-                particles[i].index = indexMorton(particles[i].p);
-            }
-            int swaps = 0;
-            for (size_t i = 0; i < particles.size() - 1; ++i) {
-                for (size_t j = i; j > 0; --j) {
-                    if (particles[j - 1].index > particles[j].index) {
-                        std::swap(particles[j - 1], particles[j]);
-                        ++swaps;
-                    } else {
-                        break;
-                    }
-                }
-            }
+        std::vector<uint32_t> cellCount(_size.prod(), 0);
+        std::vector<uint32_t> cellIndex(_size.prod(), 0);
 
-            //DBG("swaps = %d", swaps);
-        }
-#endif
-        std::vector<size_t> cellCount(_size.prod(), 0);
-        std::vector<size_t> cellIndex(_size.prod(), 0);
+        size_t count = particles.size();
 
         // Update particle index and count number of particles per cell
-        for (size_t i = 0; i < particles.size(); ++i) {
+        for (size_t i = 0; i < count; ++i) {
+            uint32_t index = indexLinear(particles[i].p);
             //uint32_t index = indexMorton(particles[i].p);
-            //particles[i].index = indexMorton(particles[i].p);
-            size_t index = indexLinear(particles[i].p);
-            //ASSERT(index < size_t(_size.prod()), "particle out of bounds (pos=%s, bounds=%s, index=%d)", particles[i].p, _bounds, index);
+            particles[i].index = index;
             ++cellCount[index];
         }
+
         // Initialize cell indices & offsets
         size_t index = 0;
         for (size_t i = 0; i < cellIndex.size(); ++i) {
@@ -114,12 +93,12 @@ public:
             index += cellCount[i];
         }
         _cellOffset.back() = index;
-        // Put particles into cells
-        _indices.resize(particles.size());
-        for (size_t i = 0; i < particles.size(); ++i) {
-            size_t index = indexLinear(particles[i].p);
-            //uint32_t index = particles[i].index;
-            _indices[cellIndex[index]++] = i;
+
+        // Sort particles by index
+        for (size_t i = 0; i < count; ++i) {
+            while (i >= cellIndex[particles[i].index] || i < _cellOffset[particles[i].index]) {
+                std::swap(particles[i], particles[cellIndex[particles[i].index]++]);
+            }
         }
     }
 
@@ -132,7 +111,7 @@ public:
                 for (int x = min.x(); x <= max.x(); ++x) {
                     size_t i = z * (_size.x() * _size.y()) + y * _size.x() + x;
                     for (size_t j = _cellOffset[i]; j < _cellOffset[i + 1]; ++j) {
-                        func(_indices[j]);
+                        func(j);
                     }
                 }
             }
@@ -146,7 +125,6 @@ private:
 
     Vector3i _size;
     std::vector<size_t> _cellOffset;
-    std::vector<size_t> _indices;
 };
 
 class SPH {
