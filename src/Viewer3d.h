@@ -29,7 +29,6 @@ public:
         initializeGUI();
         _startTime = std::chrono::high_resolution_clock::now();
         _lastTime = 0;
-
         _viewOrigin = _sph.bounds().center();
     }
 
@@ -111,7 +110,9 @@ public:
                 _sph.update(dt);
                 pbs::DBG("timestep took %s", timer.elapsedString());
             }
-            createMesh();
+            if (_showMeshes) {
+                createMesh();
+            }
         } else if (_isRunning) {
             pbs::Timer timer;
             _sph.update(0.001f);
@@ -138,16 +139,19 @@ public:
         model = translate(model, -_viewOrigin);
         model = _arcball.matrix() * model;
 
+        Matrix4f mv = view * model;
         Matrix4f mvp = proj * view * model;
 
-        _gridPainter->draw(mvp);
-        //_boxPainter->draw(mvp, pbs::Box3f(pbs::Vector3f(-0.1f), pbs::Vector3f(0.1f)));
-        _boxPainter->draw(mvp, _sph.bounds());
-
-        if (_showParticles) {
-            _particlePainter->draw(mvp, _sph.positions());
+        if (_showGrid) {
+            _gridPainter->draw(mvp);
         }
-
+        if (_showBounds) {
+            _boxPainter->draw(mvp, _sph.bounds());
+        }
+        if (_showParticles) {
+            //_particlePainter->draw(mvp, _sph.positions());
+            _sphereParticlePainter->draw(mv, proj, _sph.positions());
+        }
         if (_showMeshes) {
             _meshPainter->draw(mvp);
         }
@@ -156,42 +160,12 @@ public:
         if (_isAnimation) {
             screenshot(tfm::format("frame%04d.png", _animationFrame++));
         }
-
-#if 0
-
-        auto ctx = mNVGContext;
-
-        auto extents = _sph.bounds().extents();
-        auto scale = 0.9f * std::min(width() / extents.x(), height() / extents.y());
-        extents *= scale;
-
-        nvgBeginFrame(ctx, mSize[0], mSize[1], mPixelRatio);
-
-        nvgResetTransform(ctx);
-        nvgTranslate(ctx, 0.5f * (width() - extents.x()), 0.5f * (height() - extents.y()));
-
-        nvgBeginPath(ctx);
-        nvgRect(ctx, 0, 0, extents.x(), extents.y());
-        nvgStrokeColor(ctx, Color(255, 255));
-        nvgStroke(ctx);
-
-        nvgBeginPath(ctx);
-        for (const auto &particle : _sph.particles()) {
-            auto p = particle.p * scale;
-            float radius = 2.f;
-            nvgRect(ctx, p.x() - radius, extents.y() - (p.y() - radius), 2.f * radius, 2.f * radius);
-        }
-        nvgFillColor(ctx, Color(255, 100));
-        nvgFill(ctx);
-
-        nvgEndFrame(ctx);
-#endif
     }
 
     void refresh() {
         _stiffnessSlider->setValue(pbs::rangeToUnit(_sph.settings().stiffness, 0.5f, 10.f));
         _stiffnessTextBox->setValue(tfm::format("%.1f", _sph.settings().stiffness));
-        _viscositySlider->setValue(pbs::rangeToUnit(_sph.settings().viscosity, 0.5f, 10.f));
+        _viscositySlider->setValue(pbs::rangeToUnit(_sph.settings().viscosity, 0.5f, 100.f));
         _viscosityTextBox->setValue(tfm::format("%.1f", _sph.settings().viscosity));
     }
 
@@ -226,7 +200,7 @@ public:
         panel->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 20));
         _viscositySlider = new Slider(panel);
         _viscositySlider->setFixedWidth(100);
-        _viscositySlider->setCallback([&] (float f) { _sph.settings().viscosity = pbs::unitToRange(f, 0.5f, 10.f); refresh(); });
+        _viscositySlider->setCallback([&] (float f) { _sph.settings().viscosity = pbs::unitToRange(f, 0.5f, 100.f); refresh(); });
         _viscosityTextBox = new TextBox(panel);
         _viscosityTextBox->setFixedSize(Vector2i(80, 25));
 
@@ -241,9 +215,16 @@ public:
         _gridPainter.reset(new pbs::GridPainter());
         _boxPainter.reset(new pbs::BoxPainter());
         _particlePainter.reset(new pbs::ParticlePainter());
+        _sphereParticlePainter.reset(new pbs::SphereParticlePainter());
         _meshPainter.reset(new pbs::MeshPainter());
 
         new Label(_window, "Display", "sans-bold");
+        CheckBox *showGridCheckBox = new CheckBox(_window, "Show Grid");
+        showGridCheckBox->setChecked(_showGrid);
+        showGridCheckBox->setCallback([&] (bool b) { _showGrid = b; refresh(); });
+        CheckBox *showBoundsCheckBox = new CheckBox(_window, "Show Bounds");
+        showBoundsCheckBox->setChecked(_showBounds);
+        showBoundsCheckBox->setCallback([&] (bool b) { _showBounds = b; refresh(); });
         CheckBox *showParticlesCheckBox = new CheckBox(_window, "Show Particles");
         showParticlesCheckBox->setChecked(_showParticles);
         showParticlesCheckBox->setCallback([&] (bool b) { _showParticles = b; refresh(); });
@@ -319,6 +300,8 @@ private:
 
     std::vector<std::string> _sceneNames;
 
+    bool _showGrid = true;
+    bool _showBounds = true;
     bool _showParticles = true;
     bool _showMeshes = true;
     bool _anisotropicMesh = false;
@@ -335,6 +318,7 @@ private:
     std::unique_ptr<pbs::GridPainter> _gridPainter;
     std::unique_ptr<pbs::BoxPainter> _boxPainter;
     std::unique_ptr<pbs::ParticlePainter> _particlePainter;
+    std::unique_ptr<pbs::SphereParticlePainter> _sphereParticlePainter;
     std::unique_ptr<pbs::MeshPainter> _meshPainter;
 
     pbs::sph3d::SPH _sph;
