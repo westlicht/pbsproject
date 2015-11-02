@@ -108,6 +108,8 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/cxxopts
   # stb
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/stb
+  # json11
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/json11
   # Resource file
   ${CMAKE_CURRENT_BINARY_DIR}
 )
