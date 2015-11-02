@@ -153,6 +153,8 @@ add_executable(pbsproject #MACOSX_BUNDLE
   src/ObjWriter.h src/ObjWriter.cpp
   src/Painter.h
   src/ParticleMesher.h src/ParticleMesher.cpp
+  src/Properties.h src/Properties.cpp
+  src/Scene.h src/Scene.cpp
   src/SPH.h src/SPH.cpp
   src/SPH3d.h src/SPH3d.cpp
   src/Test.h
