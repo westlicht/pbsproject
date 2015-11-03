@@ -1,7 +1,7 @@
 {
     "settings" : {
         "supportParticles" : 50,
-        "particlesPerUnitVolume" : 500000,
+        "particlesPerUnitVolume" : 100000,
         "restDensity" : 1000.0,
         "soundSpeed" : 300.0,
 
