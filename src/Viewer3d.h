@@ -101,31 +101,20 @@ public:
 
     void drawContents() override {
 
+        const float dt = _sph.maxTimestep();
+
         if (_isAnimation) {
-            float dt = 0.001f;
             int steps = int((1.f / _animationFPS) / dt);
-            pbs::DBG("steps = %d", steps);
             for (int i = 0; i < steps; ++i) {
                 pbs::Timer timer;
                 _sph.update(dt);
-                pbs::DBG("timestep took %s", timer.elapsedString());
             }
             if (_showMeshes) {
                 createMesh();
             }
         } else if (_isRunning) {
             pbs::Timer timer;
-            _sph.update(0.001f);
-            pbs::DBG("timestep took %s", timer.elapsedString());
-            #if 0
-            double dt = 0.01;
-            auto currentTime = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - _startTime).count();
-            while (_lastTime + dt < currentTime) {
-                std::cout << "timestep"
-                _sph.update(dt*0.3);
-                _lastTime += dt;
-            }
-            #endif
+            _sph.update(dt);
         }
 
         Matrix4f view, proj, model;

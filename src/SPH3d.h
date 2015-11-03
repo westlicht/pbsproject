@@ -1,5 +1,10 @@
 #pragma once
 
+
+// [1] Weakly compressible SPH for free surface flows
+// [2] Predictive-Corrective Incompressible SPH
+// [3] Versatile Surface Tension and Adhesion for SPH Fluids
+
 #include "Common.h"
 #include "Scene.h"
 #include "Vector.h"
@@ -21,6 +26,7 @@ namespace sph3d {
 struct Particle {
     Vector3f p;         // 12
     Vector3f v;         // 12
+    Vector3f n;         // 12
     Vector3f force;     // 12
     float density;      // 4
     float pressure;     // 4
@@ -29,8 +35,8 @@ struct Particle {
     Particle(const Vector3f &p) : p(p), v(0.f) {}
 };
 
-typedef std::vector<Particle, AlignedAllocator<Particle, 64>> ParticleVector;
-//typedef std::vector<Particle> ParticleVector;
+//typedef std::vector<Particle, AlignedAllocator<Particle, 64>> ParticleVector;
+typedef std::vector<Particle> ParticleVector;
 
 class Grid {
 public:
@@ -153,14 +159,22 @@ public:
     struct Kernel {
         float h;
         float h2;
+        float halfh;
 
         void init(float h_) {
             h = h_;
             h2 = sqr(h);
+            halfh = 0.5f * h;
             poly6Constant = 365.f / (64.f * M_PI * std::pow(h, 9.f));
+            poly6GradConstant = -945.f / (32.f * M_PI * std::pow(h, 9.f));
+            poly6LaplaceConstant = -945.f / (32.f * M_PI * std::pow(h, 9.f));
             spikyConstant = 15.f / (M_PI * std::pow(h, 6.f));
             spikyGradConstant = -45.f / (M_PI * std::pow(h, 6.f));
+            spikyLaplaceConstant = -90.f / (M_PI * std::pow(h, 6.f));
             viscosityLaplaceConstant = 45.f / (M_PI * std::pow(h, 6.f));
+
+            surfaceTensionConstant = 32.f / (M_PI * std::pow(h, 9.f));
+            surfaceTensionOffset = -std::pow(h, 6.f) / 64.f;
         }
 
         // Kernels are split into constant and variable part. Arguments are as follows:
@@ -173,19 +187,44 @@ public:
             return cube(h2 - r2);
         }
 
+        float poly6GradConstant;
+        inline Vector3f poly6Grad(const Vector3f &r, float r2) const {
+            return sqr(h2 - r2) * r;
+        }
+
+        float poly6LaplaceConstant;
+        inline float poly6Laplace(float r2) {
+            return (h2 - r2) * (3.f * h2 - 7.f * r2);
+        }
+
         float spikyConstant;
         inline float spiky(float rn) const {
             return cube(h - rn);
         }
 
         float spikyGradConstant;
-        inline Vector3f spikyGrad(const Vector3f &r, float rn) {
+        inline Vector3f spikyGrad(const Vector3f &r, float rn) const {
             return sqr(h - rn) * r * (1.f / rn);
         }
 
+        float spikyLaplaceConstant;
+        inline float spikyLaplace(float rn) const {
+            return (h - rn) * (h - 2.f * rn) / rn;
+        }
+
         float viscosityLaplaceConstant;
-        inline float viscosityLaplace(float rn) {
+        inline float viscosityLaplace(float rn) const {
             return (h - rn);
+        }
+
+        float surfaceTensionConstant;
+        float surfaceTensionOffset;
+        inline float surfaceTension(float rn) const {
+            if (rn < halfh) {
+                return 2.f * cube(h - rn) * cube(rn) + surfaceTensionOffset;
+            } else {
+                return cube(h - rn) * cube(rn);
+            }
         }
     };
 
@@ -199,11 +238,14 @@ public:
         _restSpacing = 1.f / std::pow(_particlesPerUnitVolume, 1.f / 3.f);
         _particleMass = _restDensity / _particlesPerUnitVolume;
         _particleMass2 = sqr(_particleMass);
-        _h = std::pow((3.f * _supportParticles) / (4.f * M_PI * _particlesPerUnitVolume), 1.f / 3.f);
+        //_h = std::pow((3.f * _supportParticles) / (4.f * M_PI * _particlesPerUnitVolume), 1.f / 3.f);
+        _h = _restSpacing * 2.f;
         _h2 = sqr(_h);
 
         wcsph.B = _restDensity * sqr(wcsph.cs) / wcsph.gamma;
         wcsph.dt = std::min(0.25f * _h / (_particleMass * 9.81f), 0.4f * _h / (wcsph.cs * (1.f + 0.6f * wcsph.viscosity)));
+
+        _maxTimestep = 1e-3f;
 
         _bounds = scene.world.bounds;
         _kernel.init(_h);
@@ -242,30 +284,35 @@ public:
     const Settings &settings() const { return _settings; }
           Settings &settings()       { return _settings; }
 
+    // iterate i=0..count-1 calling func(i)
     template<typename Func>
-    void iterate(Func func) {
-        for (size_t i = 0; i < _particles.size(); ++i) {
-            for (size_t j = i + 1; j < _particles.size(); ++j) {
-                Func(_particles[i], _particles[j]);
+    void iterate(size_t count, Func func) {
+#if USE_TBB
+        tbb::parallel_for(0ul, count, 1ul, [func] (size_t i) { func(i); });
+#else
+        for (size_t i = 0; i < count; ++i) { func(i); }
+#endif
+    }
+
+    // iterate over all neighbours around p, calling func(j, r, r2)
+    template<typename Func>
+    void iterateNeighbours(const Vector3f &p, Func func) {
+        _grid.lookup(p, _h, [this, func, &p] (size_t j) {
+            Vector3f r = p - _particles[j].p;
+            float r2 = r.squaredNorm();
+            if (r2 < _h2) {
+                func(j, r, r2);
             }
-        }
+        });
     }
 
     void computeDensity() {
-#if USE_TBB
-        tbb::parallel_for(0ul, _particles.size(), 1ul, [this] (size_t i) {
-#else
-        for (size_t i = 0; i < _particles.size(); ++i) {
-#endif
+        iterate(_particles.size(), [this] (size_t i) {
             float density = 0.f;
-            _grid.lookup(_particles[i].p, _h, [this, i, &density] (size_t j) {
-                Vector3f r = _particles[i].p - _particles[j].p;
-                float r2 = r.squaredNorm();
-                if (r2 < _h2) {
-                    density += _particleMass * _kernel.poly6Constant * _kernel.poly6(r2);
-                }
+            iterateNeighbours(_particles[i].p, [this, &density] (size_t j, const Vector3f &r, float r2) {
+                density += _kernel.poly6(r2);
             });
-            //float pressure = _settings.stiffness * (density - _restDensity);
+            density *= _particleMass * _kernel.poly6Constant;
 
             // Tait pressure (WCSPH)
             float t = density / _restDensity;
@@ -273,58 +320,62 @@ public:
 
             _particles[i].density = density;
             _particles[i].pressure = pressure;
-#if USE_TBB
         });
-#else            
-        }
-#endif
+    }
+
+    // Compute normals based on [3]
+    void computeNormals() {
+        iterate(_particles.size(), [this] (size_t i) {
+            Vector3f normal;
+            iterateNeighbours(_particles[i].p, [this, &normal] (size_t j, const Vector3f &r, float r2) {
+                normal += _kernel.poly6Grad(r, r2) / _particles[j].density;
+            });
+            normal *= _h * _particleMass * _kernel.poly6GradConstant;
+            _particles[i].n = normal;
+        });
     }
 
     void computeForces() {
-#if USE_TBB
-        tbb::parallel_for(0ul, _particles.size(), 1ul, [this] (size_t i) {
-#else
-        for (size_t i = 0; i < _particles.size(); ++i) {
-#endif
+        iterate(_particles.size(), [this] (size_t i) {
             Vector3f force(0.f);
-            _grid.lookup(_particles[i].p, _h, [this, i, &force] (size_t j) {
-                const float &density_i = _particles[i].density;
-                const float &density_j = _particles[j].density;
-                const float &p_i = _particles[i].pressure;
-                const float &p_j = _particles[j].pressure;
-                //const float p_i = _settings.stiffness * (density_i - _restDensity);
-                //const float p_j = _settings.stiffness * (density_j - _restDensity);
+            Vector3f forceViscosity;
+            Vector3f forceCohesion;
+            Vector3f forceCurvature;
 
-#if 0
-                float t = density_i / _restDensity;
-                const float p_i = _settings.stiffness * (t*t*t*t*t*t*t - 1.f);
-                t = density_j / _restDensity;
-                const float p_j = _settings.stiffness * (t*t*t*t*t*t*t - 1.f);
-#endif
+            _grid.lookup(_particles[i].p, _h, [this, i, &force, &forceCohesion, &forceCurvature, &forceViscosity] (size_t j) {
                 const Vector3f &v_i = _particles[i].v;
                 const Vector3f &v_j = _particles[j].v;
+                const Vector3f &n_i = _particles[i].n;
+                const Vector3f &n_j = _particles[j].n;
+                const float &density_i = _particles[i].density;
+                const float &density_j = _particles[j].density;
+                const float &pressure_i = _particles[i].pressure;
+                const float &pressure_j = _particles[j].pressure;
+
                 if (i != j) {
                     Vector3f r = _particles[i].p - _particles[j].p;
                     float r2 = r.squaredNorm();
-                    if (r2 < _h2 && r2 > 0) {
+                    if (r2 < _h2 && r2 > 0.00001f) {
                         float rn = std::sqrt(r2);
-                        //force -= 0.5f * (p_i + p_j) * _m / density_j * Kernel::spikyGrad(r);
-                        //force -= _particleMass2 * (p_i + p_j) / (2.f * density_i * density_j) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
+                        //force -= 0.5f * (pressure_i + pressure_j) * _m / density_j * Kernel::spikyGrad(r);
+                        //force -= _particleMass2 * (pressure_i + pressure_j) / (2.f * density_i * density_j) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
 
                         // Viscosity force
                         //force += _particleMass2 * _settings.viscosity * (v_j - v_i) / (density_i * density_j) * _kernel.viscosityLaplaceConstant * _kernel.viscosityLaplace(rn);
 
 
                         // Pressure force (WCSPH)
-                        //if (p_i > 0.f || p_j > 0.f)
-                        force -= _particleMass2 * (p_i / sqr(density_i) + p_j / sqr(density_j)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
+                        //if (pressure_i > 0.f || pressure_j > 0.f)
+                        force -= _particleMass2 * (pressure_i / sqr(density_i) + pressure_j / sqr(density_j)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
 
+                        #if 0
                         // Viscosity force (WCSPH)
                         Vector3f v = (v_i - v_j);
                         if (v.dot(r) < 0.f) {
                             float vu = 2.f * wcsph.viscosity * _h * wcsph.cs / (density_i + density_j);
                             force += vu * _particleMass2 * (v.dot(r) / (r2 + 0.001f * sqr(_h))) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
                         }
+                        #endif
 
                         // Surface tension force (WCSPH)
                         #if 0
@@ -333,6 +384,15 @@ public:
                         force += _particleMass * a;
                         #endif
 
+                        // Viscosity
+                        if (density_j > 0.0001f) {
+                            forceViscosity -= (v_i - v_j) * (_kernel.viscosityLaplace(rn) / density_j);
+                        }
+
+                        // Surface tension (according to [3])
+                        float correctionFactor = 2.f * _restDensity / (density_i + density_j);
+                        forceCohesion += correctionFactor * r * _kernel.surfaceTension(rn);
+                        forceCurvature += correctionFactor * (n_i - n_j);
                     } else if (r2 == 0.f) {
                         // Avoid collapsing particles
                         _particles[j].p += Vector3f(1e-5f);
@@ -340,14 +400,18 @@ public:
                 }
             });
 
+            const float viscosity = 0.0001f;
+            forceViscosity *= viscosity * _particleMass * _kernel.viscosityLaplaceConstant;
+
+            const float surfaceTension = 1.f;
+            forceCohesion *= surfaceTension * _particleMass2 * _kernel.surfaceTensionConstant;
+            forceCurvature *= surfaceTension * _particleMass;
+
+            force += forceCohesion + forceCurvature + forceViscosity;
             force += _particleMass * _settings.gravity;
 
             _particles[i].force = force;
-#if USE_TBB
         });
-#else            
-        }
-#endif
     }
 
     void computeCollisions(std::function<void(Particle &particle, const Vector3f &n, float d)> handler) {
@@ -376,6 +440,8 @@ public:
     void update(float dt) {
         _t += dt;
 
+        DBG("update: dt = %f", dt);
+
         Vector3f gd;
         float t = std::fmod(_t * 0.5f, 4.f);
         if (t < 1.f) {
@@ -389,6 +455,7 @@ public:
         }
 
         //_settings.gravity = Vector3f(0.f);
+        _settings.gravity = Vector3f(0.f, -9.81f, 0.f);
 
         {
             ProfileScope profile("Grid Update");
@@ -401,6 +468,11 @@ public:
         }
 
         {
+            ProfileScope profile("Normal Update");
+            computeNormals();
+        }
+
+        {
             ProfileScope profile("Force Update");
             computeForces();
         }
@@ -408,11 +480,12 @@ public:
         {
             ProfileScope profile("Integrate");
             float invM = 1.f / _particleMass;
-            for (auto &particle : _particles) {
+            iterate(_particles.size(), [this, invM, dt] (size_t i) {
+                auto &particle = _particles[i];
                 Vector3f a = particle.force * invM;
                 particle.v += a * dt;
                 particle.p += particle.v * dt;
-            }
+            });
         }
 
         {
@@ -491,6 +564,8 @@ public:
         return params;
     }
 
+    float maxTimestep() const { return _maxTimestep; }
+
     // Returns particle positions in matrix form
     MatrixXf positions() const {
         MatrixXf positions;
@@ -512,11 +587,13 @@ private:
     float _h;                               ///< SPH smoothing radius
     float _h2;                              ///< Squared SPH smooting radius
 
+    float _maxTimestep;                     ///< Maximum allowed timestep
+
     struct {
         const float gamma = 7.f;
         float cs = 10.f;
         float B;
-        float viscosity = 0.1f;
+        float viscosity = 0.005f;
         float dt;
     } wcsph;
 
