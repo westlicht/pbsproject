@@ -19,8 +19,6 @@
 
 #include <vector>
 
-#define USE_TBB 1
-
 namespace pbs {
 namespace sph3d {
 

@@ -17,8 +17,6 @@
 
 namespace pbs {
 
-#define USE_TBB 1
-
 // Uniform grid for indexing particles.
 // To allow for particles with different footprints (anisotropic kernels)
 // particles may be added to multiple cells. Lookups are fast as only one

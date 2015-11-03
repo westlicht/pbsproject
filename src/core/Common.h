@@ -9,6 +9,9 @@
 #include <string>
 #include <vector>
 
+// Enable TBB parallelization
+#define USE_TBB 1
+
 namespace pbs {
 
 // Types ----------------------------------------------------------------------
