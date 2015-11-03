@@ -80,6 +80,7 @@ set(TBB_BUILD_TBBMALLOC_PROXY OFF CACHE BOOL " " FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb ext_build/tbb)
 
 include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
   # Eigen
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/nanogui/ext/eigen
   # GLFW
@@ -145,27 +146,36 @@ add_custom_command(
 
 add_executable(pbsproject #MACOSX_BUNDLE
   #resources.h resources.cpp
-  src/Box.h
-  src/Common.h src/Common.cpp
-  src/MarchingCubes.h src/MarchingCubes.cpp
-  src/Mesh.h
-  src/ObjReader.h src/ObjReader.cpp
-  src/ObjWriter.h src/ObjWriter.cpp
-  src/Painter.h
-  src/ParticleMesher.h src/ParticleMesher.cpp
-  src/Profiler.h src/Profiler.cpp
-  src/Properties.h src/Properties.cpp
-  src/Scene.h src/Scene.cpp
+  src/core/AlignedAllocator.h
+  src/core/Box.h
+  src/core/Common.h src/core/Common.cpp
+  src/core/Morton.h
+  src/core/Profiler.h src/core/Profiler.cpp
+  src/core/Properties.h src/core/Properties.cpp
+  src/core/Timer.h
+  src/core/Vector.h
+
+  src/geometry/MarchingCubes.h src/geometry/MarchingCubes.cpp
+  src/geometry/Mesh.h
+  src/geometry/ObjReader.h src/geometry/ObjReader.cpp
+  src/geometry/ObjWriter.h src/geometry/ObjWriter.cpp
+  src/geometry/ParticleMesher.h src/geometry/ParticleMesher.cpp
+  src/geometry/VoxelGrid.h
+
+  src/sim/Scene.h src/sim/Scene.cpp
+  src/sim/SPH3d.h src/sim/SPH3d.cpp
+
+  src/viewer/Painter.h
+  src/viewer/Viewer2d.h
+  src/viewer/Viewer3d.h
+
   src/SPH.h src/SPH.cpp
-  src/SPH3d.h src/SPH3d.cpp
   src/Test.h
-  src/Vector.h
-  src/VoxelGrid.h
   src/main.cpp
+
   ext/stb/stb_image_write.cpp
   ext/json11/json11.cpp
   ${EXTRA_SOURCE})
-
 target_link_libraries(pbsproject tbb_static nanogui ${NANOGUI_EXTRA_LIBS})
 
 #set_target_properties(pbsproject PROPERTIES OUTPUT_NAME "PBS Project")

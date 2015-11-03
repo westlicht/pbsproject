@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Common.h"
-#include "Vector.h"
-#include "Box.h"
-#include "Properties.h"
+#include "core/Common.h"
+#include "core/Vector.h"
+#include "core/Box.h"
+#include "core/Properties.h"
 
 #include <string>
 #include <vector>

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Common.h"
-#include "Mesh.h"
+#include "core/Common.h"
+#include "geometry/Mesh.h"
 
 #include <nanogui/glutil.h>
 

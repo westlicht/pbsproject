@@ -1,5 +1,5 @@
-#include "Viewer2d.h"
-#include "Viewer3d.h"
+#include "viewer/Viewer2d.h"
+#include "viewer/Viewer3d.h"
 //#include "Test.h"
 
 #include <cxxopts.h>

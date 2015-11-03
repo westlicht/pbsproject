@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Common.h"
-#include "Box.h"
-#include "Vector.h"
+#include "core/Common.h"
+#include "core/Box.h"
+#include "core/Vector.h"
 
 namespace pbs {
 

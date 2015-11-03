@@ -1,5 +1,6 @@
-#include "Common.h"
-#include "SPH.h"
+#include "core/Common.h"
+
+#include "../SPH.h"
 
 #include <nanogui/combobox.h>
 #include <nanogui/glutil.h>

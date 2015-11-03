@@ -1,7 +1,8 @@
 #include "Scene.h"
-#include "Common.h"
-#include "Vector.h"
-#include "Box.h"
+
+#include "core/Common.h"
+#include "core/Vector.h"
+#include "core/Box.h"
 
 #include <tinyformat.h>
 #include <json11.h>

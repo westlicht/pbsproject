@@ -1,9 +1,10 @@
-#include "Common.h"
-#include "SPH3d.h"
 #include "Painter.h"
-#include "ObjReader.h"
-#include "ParticleMesher.h"
-#include "Timer.h"
+
+#include "core/Common.h"
+#include "core/Timer.h"
+#include "geometry/ObjReader.h"
+#include "geometry/ParticleMesher.h"
+#include "sim/SPH3d.h"
 
 #include <nanogui/checkbox.h>
 #include <nanogui/combobox.h>

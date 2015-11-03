@@ -1,8 +1,9 @@
 // Based on code from Raghavendra Chandrashekara, Paul Bourke and Cory Gene Bloyd
 
 #include "MarchingCubes.h"
-#include "Vector.h"
 #include "Mesh.h"
+
+#include "core/Vector.h"
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>

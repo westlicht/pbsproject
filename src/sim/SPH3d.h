@@ -5,14 +5,14 @@
 // [2] Predictive-Corrective Incompressible SPH
 // [3] Versatile Surface Tension and Adhesion for SPH Fluids
 
-#include "Common.h"
-#include "Scene.h"
-#include "Vector.h"
-#include "Box.h"
-#include "Morton.h"
-#include "AlignedAllocator.h"
-#include "Timer.h"
-#include "Profiler.h"
+#include "core/Common.h"
+#include "core/Vector.h"
+#include "core/Box.h"
+#include "core/Morton.h"
+#include "core/AlignedAllocator.h"
+#include "core/Timer.h"
+#include "core/Profiler.h"
+#include "sim/Scene.h"
 
 #include <tbb/tbb.h>
 
