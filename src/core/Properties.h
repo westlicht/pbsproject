@@ -15,6 +15,9 @@ public:
 
     const json11::Json &json() const { return _json; }
 
+    bool hasObject(const std::string &name) const;
+    Properties getObject(const std::string &name) const;
+
     bool hasString(const std::string &name) const;
     std::string getString(const std::string &name) const;
     std::string getString(const std::string &name, const std::string &def) const;

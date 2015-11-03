@@ -43,6 +43,15 @@ Properties::Properties(const Json &json) :
     _json(json)
 {}
 
+bool Properties::hasObject(const std::string &name) const {
+    return _json[name].is_object();
+}
+
+Properties Properties::getObject(const std::string &name) const {
+    if (!hasObject(name)) throw Exception("No object named '%s'", name);
+    return Properties(_json[name]);
+}
+
 bool Properties::hasString(const std::string &name) const {
     return _json[name].is_string();
 }
