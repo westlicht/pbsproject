@@ -27,7 +27,7 @@ public:
         DBG("Initialized grid: bounds = %s, cellSize = %f, size = %s", _bounds, _cellSize, _size);
     }
 
-    inline Vector3i index(const Vector3f &pos) {
+    inline Vector3i index(const Vector3f &pos) const {
         return Vector3i(
             int(std::floor((pos.x() - _bounds.min.x()) * _invCellSize)),
             int(std::floor((pos.y() - _bounds.min.y()) * _invCellSize)),
@@ -35,16 +35,16 @@ public:
         );
     }
 
-    inline size_t indexLinear(const Vector3f &pos) {
+    inline size_t indexLinear(const Vector3f &pos) const {
         Vector3i i = index(pos);
         return i.z() * (_size.x() * _size.y()) + i.y() * _size.x() + i.x();
     }
 
-    inline uint32_t indexMorton(const Vector3i &index) {
+    inline uint32_t indexMorton(const Vector3i &index) const {
         return Morton3D::morton10bit(index.x(), index.y(), index.z());
     }
 
-    inline uint32_t indexMorton(const Vector3f &pos) {
+    inline uint32_t indexMorton(const Vector3f &pos) const {
         return indexMorton(index(pos));
     }
 
@@ -85,7 +85,7 @@ public:
     }
 
     template<typename Func>
-    void lookup(const Vector3f &pos, float radius, Func func) {
+    void lookup(const Vector3f &pos, float radius, Func func) const {
         Vector3i min = index(pos - Vector3f(radius)).cwiseMax(Vector3i(0));
         Vector3i max = index(pos + Vector3f(radius)).cwiseMin(_size - Vector3i(1));
         for (int z = min.z(); z <= max.z(); ++z) {

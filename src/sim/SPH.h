@@ -98,8 +98,6 @@ public:
         _forces.resize(_positions.size());
         _densities.resize(_positions.size());
         _pressures.resize(_positions.size());
-        _indices.resize(_positions.size());
-
     }
 
     const Settings &settings() const { return _settings; }
@@ -117,9 +115,9 @@ public:
 
     // iterate over all neighbours around p, calling func(j, r, r2)
     template<typename Func>
-    void iterateNeighbours(const Vector3f &p, Func func) {
-        _grid.lookup(p, _h, [this, func, &p] (size_t j) {
-            Vector3f r = p - _positions[j];
+    void iterateNeighbours(const Grid &grid, const std::vector<Vector3f> &positions, const Vector3f &p, Func func) {
+        grid.lookup(p, _h, [&] (size_t j) {
+            Vector3f r = p - positions[j];
             float r2 = r.squaredNorm();
             if (r2 < _h2) {
                 func(j, r, r2);
@@ -130,7 +128,7 @@ public:
     void computeDensity() {
         iterate(_positions.size(), [this] (size_t i) {
             float density = 0.f;
-            iterateNeighbours(_positions[i], [this, &density] (size_t j, const Vector3f &r, float r2) {
+            iterateNeighbours(_grid, _positions, _positions[i], [this, &density] (size_t j, const Vector3f &r, float r2) {
                 density += _kernel.poly6(r2);
             });
             density *= _particleMass * _kernel.poly6Constant;
@@ -148,7 +146,7 @@ public:
     void computeNormals() {
         iterate(_positions.size(), [this] (size_t i) {
             Vector3f normal;
-            iterateNeighbours(_positions[i], [this, &normal] (size_t j, const Vector3f &r, float r2) {
+            iterateNeighbours(_grid, _positions, _positions[i], [this, &normal] (size_t j, const Vector3f &r, float r2) {
                 normal += _kernel.poly6Grad(r, r2) / _densities[j];
             });
             normal *= _h * _particleMass * _kernel.poly6GradConstant;
@@ -434,7 +432,6 @@ private:
     std::vector<Vector3f> _forces;
     std::vector<float> _densities;
     std::vector<float> _pressures;
-    std::vector<uint32_t> _indices;
 
     float _t = 0.f;
 };
