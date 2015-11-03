@@ -20,8 +20,6 @@
 #include <vector>
 
 namespace pbs {
-namespace sph3d {
-
 
 class SPH {
 public:
@@ -441,5 +439,4 @@ private:
     float _t = 0.f;
 };
 
-} // namespace sph3d
 } // namespace pbs

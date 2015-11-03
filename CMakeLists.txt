@@ -165,7 +165,7 @@ add_executable(pbsproject #MACOSX_BUNDLE
   src/sim/Grid.h
   src/sim/Kernel.h
   src/sim/Scene.h src/sim/Scene.cpp
-  src/sim/SPH3d.h src/sim/SPH3d.cpp
+  src/sim/SPH.h src/sim/SPH.cpp
 
   src/viewer/Painter.h
   src/viewer/Viewer2d.h

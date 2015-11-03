@@ -4,7 +4,7 @@
 #include "core/Timer.h"
 #include "geometry/ObjReader.h"
 #include "geometry/ParticleMesher.h"
-#include "sim/SPH3d.h"
+#include "sim/SPH.h"
 
 #include <nanogui/checkbox.h>
 #include <nanogui/combobox.h>
@@ -311,7 +311,7 @@ private:
     std::unique_ptr<pbs::SphereParticlePainter> _sphereParticlePainter;
     std::unique_ptr<pbs::MeshPainter> _meshPainter;
 
-    pbs::sph3d::SPH _sph;
+    pbs::SPH _sph;
 
     std::chrono::high_resolution_clock::time_point _startTime;
     double _lastTime;

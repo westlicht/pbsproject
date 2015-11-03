@@ -1,4 +1,4 @@
-#include "SPH3d.h"
+#include "SPH.h"
 
 namespace pbs {
 namespace sph3d {
