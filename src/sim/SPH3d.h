@@ -1,18 +1,19 @@
 #pragma once
 
-
 // [1] Weakly compressible SPH for free surface flows
 // [2] Predictive-Corrective Incompressible SPH
 // [3] Versatile Surface Tension and Adhesion for SPH Fluids
 
+#include "Scene.h"
+#include "Grid.h"
+#include "Kernel.h"
+
 #include "core/Common.h"
 #include "core/Vector.h"
 #include "core/Box.h"
-#include "core/Morton.h"
 #include "core/AlignedAllocator.h"
 #include "core/Timer.h"
 #include "core/Profiler.h"
-#include "sim/Scene.h"
 
 #include <tbb/tbb.h>
 
@@ -23,105 +24,6 @@
 namespace pbs {
 namespace sph3d {
 
-class Grid {
-public:
-    void init(const Box3f &bounds, float cellSize) {
-        _bounds = bounds;
-        _cellSize = cellSize;
-        _invCellSize = 1.f / cellSize;
-
-        _size = Vector3i(
-            nextPowerOfTwo(int(std::floor(_bounds.extents().x() / _cellSize)) + 1),
-            nextPowerOfTwo(int(std::floor(_bounds.extents().y() / _cellSize)) + 1),
-            nextPowerOfTwo(int(std::floor(_bounds.extents().z() / _cellSize)) + 1)
-        );
-
-        _cellOffset.resize(_size.prod() + 1);
-
-        DBG("Initialized grid: bounds = %s, cellSize = %f, size = %s", _bounds, _cellSize, _size);
-    }
-
-    inline Vector3i index(const Vector3f &pos) {
-        return Vector3i(
-            int(std::floor((pos.x() - _bounds.min.x()) * _invCellSize)),
-            int(std::floor((pos.y() - _bounds.min.y()) * _invCellSize)),
-            int(std::floor((pos.z() - _bounds.min.z()) * _invCellSize))
-        );
-    }
-
-    inline size_t indexLinear(const Vector3f &pos) {
-        Vector3i i = index(pos);
-        return i.z() * (_size.x() * _size.y()) + i.y() * _size.x() + i.x();
-    }
-
-    inline uint32_t indexMorton(const Vector3i &index) {
-        return Morton3D::morton10bit(index.x(), index.y(), index.z());
-    }
-
-    inline uint32_t indexMorton(const Vector3f &pos) {
-        return indexMorton(index(pos));
-    }
-
-    template<typename SwapFunc>
-    void update(const std::vector<Vector3f> &positions, SwapFunc swap) {
-        std::vector<uint32_t> cellCount(_size.prod(), 0);
-        std::vector<uint32_t> cellIndex(_size.prod(), 0);
-
-        size_t count = positions.size();
-
-        std::vector<uint32_t> indices(count);
-
-        // Update particle index and count number of particles per cell
-        for (size_t i = 0; i < count; ++i) {
-            uint32_t index = indexLinear(positions[i]);
-            //uint32_t index = indexMorton(particles[i].p);
-            indices[i] = index;
-            ++cellCount[index];
-        }
-
-        // Initialize cell indices & offsets
-        size_t index = 0;
-        for (size_t i = 0; i < cellIndex.size(); ++i) {
-            cellIndex[i] = index;
-            _cellOffset[i] = index;
-            index += cellCount[i];
-        }
-        _cellOffset.back() = index;
-
-        // Sort particles by index
-        for (size_t i = 0; i < count; ++i) {
-            while (i >= cellIndex[indices[i]] || i < _cellOffset[indices[i]]) {
-                size_t j = cellIndex[indices[i]]++;
-                std::swap(indices[i], indices[j]);
-                swap(i, j);
-            }
-        }
-    }
-
-    template<typename Func>
-    void lookup(const Vector3f &pos, float radius, Func func) {
-        Vector3i min = index(pos - Vector3f(radius)).cwiseMax(Vector3i(0));
-        Vector3i max = index(pos + Vector3f(radius)).cwiseMin(_size - Vector3i(1));
-        for (int z = min.z(); z <= max.z(); ++z) {
-            for (int y = min.y(); y <= max.y(); ++y) {
-                for (int x = min.x(); x <= max.x(); ++x) {
-                    size_t i = z * (_size.x() * _size.y()) + y * _size.x() + x;
-                    for (size_t j = _cellOffset[i]; j < _cellOffset[i + 1]; ++j) {
-                        func(j);
-                    }
-                }
-            }
-        }
-    }
-
-private:
-    Box3f _bounds;
-    float _cellSize;
-    float _invCellSize;
-
-    Vector3i _size;
-    std::vector<size_t> _cellOffset;
-};
 
 class SPH {
 public:
@@ -143,79 +45,6 @@ public:
         float restSpacing;
         float particleMass;
         float h;
-    };
-
-    // Kernels
-    struct Kernel {
-        float h;
-        float h2;
-        float halfh;
-
-        void init(float h_) {
-            h = h_;
-            h2 = sqr(h);
-            halfh = 0.5f * h;
-            poly6Constant = 365.f / (64.f * M_PI * std::pow(h, 9.f));
-            poly6GradConstant = -945.f / (32.f * M_PI * std::pow(h, 9.f));
-            poly6LaplaceConstant = -945.f / (32.f * M_PI * std::pow(h, 9.f));
-            spikyConstant = 15.f / (M_PI * std::pow(h, 6.f));
-            spikyGradConstant = -45.f / (M_PI * std::pow(h, 6.f));
-            spikyLaplaceConstant = -90.f / (M_PI * std::pow(h, 6.f));
-            viscosityLaplaceConstant = 45.f / (M_PI * std::pow(h, 6.f));
-
-            surfaceTensionConstant = 32.f / (M_PI * std::pow(h, 9.f));
-            surfaceTensionOffset = -std::pow(h, 6.f) / 64.f;
-        }
-
-        // Kernels are split into constant and variable part. Arguments are as follows:
-        // r  = displacement vector
-        // r2 = |r|^2 (squared norm of r)
-        // rn = |r|   (norm of r)
-
-        float poly6Constant;
-        inline float poly6(float r2) const {
-            return cube(h2 - r2);
-        }
-
-        float poly6GradConstant;
-        inline Vector3f poly6Grad(const Vector3f &r, float r2) const {
-            return sqr(h2 - r2) * r;
-        }
-
-        float poly6LaplaceConstant;
-        inline float poly6Laplace(float r2) {
-            return (h2 - r2) * (3.f * h2 - 7.f * r2);
-        }
-
-        float spikyConstant;
-        inline float spiky(float rn) const {
-            return cube(h - rn);
-        }
-
-        float spikyGradConstant;
-        inline Vector3f spikyGrad(const Vector3f &r, float rn) const {
-            return sqr(h - rn) * r * (1.f / rn);
-        }
-
-        float spikyLaplaceConstant;
-        inline float spikyLaplace(float rn) const {
-            return (h - rn) * (h - 2.f * rn) / rn;
-        }
-
-        float viscosityLaplaceConstant;
-        inline float viscosityLaplace(float rn) const {
-            return (h - rn);
-        }
-
-        float surfaceTensionConstant;
-        float surfaceTensionOffset;
-        inline float surfaceTension(float rn) const {
-            if (rn < halfh) {
-                return 2.f * cube(h - rn) * cube(rn) + surfaceTensionOffset;
-            } else {
-                return cube(h - rn) * cube(rn);
-            }
-        }
     };
 
     SPH(const Scene &scene) {
@@ -602,8 +431,6 @@ private:
     Box3f _bounds;
     Grid _grid;
 
-    //ParticleVector _particles;
-
     // Fluid particle buffers
     std::vector<Vector3f> _positions;
     std::vector<Vector3f> _velocities;
@@ -613,9 +440,7 @@ private:
     std::vector<float> _pressures;
     std::vector<uint32_t> _indices;
 
-
     float _t = 0.f;
-
 };
 
 } // namespace sph3d

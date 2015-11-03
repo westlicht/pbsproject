@@ -162,6 +162,8 @@ add_executable(pbsproject #MACOSX_BUNDLE
   src/geometry/ParticleMesher.h src/geometry/ParticleMesher.cpp
   src/geometry/VoxelGrid.h
 
+  src/sim/Grid.h
+  src/sim/Kernel.h
   src/sim/Scene.h src/sim/Scene.cpp
   src/sim/SPH3d.h src/sim/SPH3d.cpp
 
