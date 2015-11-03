@@ -58,9 +58,12 @@ public:
     }
 
     static void dump() {
+        double totalTime = 0.0;
         for (const auto &item : _items) {
             DBG("%-20s %.1f ms", item.name, item.avg);
+            totalTime += item.avg;
         }
+        DBG("%-20s %.1f ms", "Total", totalTime);
     }
 
 private:
