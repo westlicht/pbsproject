@@ -279,8 +279,8 @@ template <typename _VectorType> struct TBox {
      * respectively.
      */
     void reset() {
-        min.setConstant( std::numeric_limits<Scalar>::infinity());
-        max.setConstant(-std::numeric_limits<Scalar>::infinity());
+        min.setConstant(std::numeric_limits<Scalar>::max());
+        max.setConstant(std::numeric_limits<Scalar>::lowest());
     }
 
     /// Expand the bounding box to contain another point
