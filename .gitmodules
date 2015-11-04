@@ -7,3 +7,6 @@
 [submodule "ext/tbb"]
 	path = ext/tbb
 	url = https://github.com/wjakob/tbb.git
+[submodule "ext/filesystem"]
+	path = ext/filesystem
+	url = https://github.com/wjakob/filesystem.git
