@@ -15,6 +15,11 @@
 #include "core/Timer.h"
 #include "core/Profiler.h"
 
+#include "geometry/Mesh.h"
+#include "geometry/ObjReader.h"
+#include "geometry/Voxelizer.h"
+#include "geometry/VoxelGrid.h"
+
 #include <tbb/tbb.h>
 
 #include <vector>
@@ -78,11 +83,14 @@ public:
         DBG("wcsph.viscosity = %f", wcsph.viscosity);
         DBG("wcsph.dt = %f", wcsph.dt);
 
-        for (const auto box : scene.boxes) {
+        for (const auto &box : scene.boxes) {
             voxelizeBox(box.bounds);
         }
-        for (const auto sphere : scene.spheres) {
+        for (const auto &sphere : scene.spheres) {
             voxelizeSphere(sphere.position, sphere.radius);
+        }
+        for (const auto &mesh : scene.meshes) {
+            voxelizeMesh(mesh);
         }
 
         //voxelizeBox(Box3f(Vector3f(0.25f), Vector3f(0.75f)));
@@ -368,6 +376,11 @@ public:
                 }
             }
         }
+    }
+
+    void voxelizeMesh(const Scene::Mesh &sceneMesh) {
+        Mesh mesh = ObjReader::load(sceneMesh.filename);
+        Voxelizer::voxelize(mesh, _restSpacing, _positions);
     }
 
     const Box3f &bounds() const { return _bounds; }
