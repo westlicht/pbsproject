@@ -95,15 +95,8 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb/include
   # Filesystem
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/filesystem
-  # Disjoint set data structure
-  # ${CMAKE_CURRENT_SOURCE_DIR}/ext/dset
-  # Parallel stable sort
-  # ${CMAKE_CURRENT_SOURCE_DIR}/ext/pss
   # Pseudorandom number generator
-  # ${CMAKE_CURRENT_SOURCE_DIR}/ext/pcg32
-  # RPLY mesh I/O library
-  # ${CMAKE_CURRENT_SOURCE_DIR}/ext/rply
-  # Half precision type
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/pcg32
   # ${CMAKE_CURRENT_SOURCE_DIR}/ext/half
   # Tinyformat
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyformat
