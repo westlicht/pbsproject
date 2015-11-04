@@ -1,0 +1,20 @@
+{
+    "folders":
+    [
+        {
+            "path": "."
+        }
+    ],
+    "settings":
+    {
+        "tab_size": 4,
+        "translate_tabs_to_spaces": true
+    },
+    "build_systems": [
+        {
+            "name": "Build",
+            "cmd": [ "make", "-j8", "-C", "${project_path}/build" ],
+            "file_regex": "^(..[^:\n]*):([0-9]+):?([0-9]+)?:? (.*)$"
+        }
+    ]
+}
