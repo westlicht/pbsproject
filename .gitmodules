@@ -10,3 +10,6 @@
 [submodule "ext/filesystem"]
 	path = ext/filesystem
 	url = https://github.com/wjakob/filesystem.git
+[submodule "ext/pcg32"]
+	path = ext/pcg32
+	url = https://github.com/wjakob/pcg32.git
