@@ -156,7 +156,7 @@ add_executable(pbsproject #MACOSX_BUNDLE
   src/core/Vector.h
 
   src/geometry/MarchingCubes.h src/geometry/MarchingCubes.cpp
-  src/geometry/Mesh.h
+  src/geometry/Mesh.h src/geometry/Mesh.cpp
   src/geometry/ObjReader.h src/geometry/ObjReader.cpp
   src/geometry/ObjWriter.h src/geometry/ObjWriter.cpp
   src/geometry/ParticleMesher.h src/geometry/ParticleMesher.cpp

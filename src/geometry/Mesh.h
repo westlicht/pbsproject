@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/Common.h"
 #include "core/Vector.h"
 
 #include <vector>
@@ -21,7 +22,9 @@ public:
 
     const MatrixXu &triangles() const { return _triangles; }
           MatrixXu &triangles()       { return _triangles; }
-          
+
+    Box3f computeBounds() const;
+
 private:
     MatrixXf _vertices;
     MatrixXf _normals;
