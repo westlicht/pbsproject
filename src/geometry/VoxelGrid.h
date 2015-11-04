@@ -1,6 +1,9 @@
 #pragma once
 
 #include "core/Common.h"
+#include "core/Vector.h"
+
+#include <vector>
 
 namespace pbs {
 
@@ -25,6 +28,10 @@ public:
         resize(Vector3i(x, y, z));
     }
 
+    void fill(const T &value) {
+        std::fill(_voxels.begin(), _voxels.end(), value);
+    }
+
     const Vector3i &size() const { return _size; }
 
     const T &operator()(const Vector3i &index) const { return _voxels[linearize(index)]; }
@@ -32,6 +39,11 @@ public:
 
     const T &operator()(int x, int y, int z) const { return _voxels[linearize(Vector3i(x, y, z))]; }
           T &operator()(int x, int y, int z)       { return _voxels[linearize(Vector3i(x, y, z))]; }
+
+    T value(const Vector3i &index) const { return _voxels[linearize(index)]; }
+    T value(int x, int y, int z) const { return _voxels[linearize(Vector3i(x, y, z))]; }
+    void setValue(const Vector3i &index, const T &value) { _voxels[linearize(index)] = value; }
+    void setValue(int x, int y, int z, const T &value) { _voxels[linearize(Vector3i(x, y, z))] = value; }
 
     const T *data() const { return _voxels.data(); }
 
@@ -47,5 +59,6 @@ private:
 };
 
 typedef VoxelGrid<float> VoxelGridf;
+typedef VoxelGrid<bool> VoxelGridb;
 
 } // namespace pbs
