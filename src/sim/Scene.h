@@ -22,12 +22,16 @@ public:
         Vector3f position;
         float radius;
     };
+    struct Mesh {
+        std::string filename;
+    };
 
     Properties settings;
 
     World world;
     std::vector<Box> boxes;
     std::vector<Sphere> spheres;
+    std::vector<Mesh> meshes;
 
     Scene();
 

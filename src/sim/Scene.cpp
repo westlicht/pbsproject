@@ -38,6 +38,11 @@ std::string Scene::dump() const {
         result += tfm::format("    Sphere[position=%s, radius=%f],\n", sphere.position, sphere.radius);
     }
     result += "  ],\n";
+    result += "  meshes = [\n";
+    for (const auto &mesh : meshes) {
+        result += tfm::format("    Mesh[filename=%s],\n", mesh.filename);
+    }
+    result += "  ],\n";
     result += "]";
     return result;
 }
@@ -67,15 +72,21 @@ Scene Scene::load(const std::string &filename) {
         }
         for (auto jsonBox : jsonScene["boxes"].array_items()) {
             Properties props(jsonBox);
-            scene.boxes.emplace_back(Scene::Box({
+            scene.boxes.emplace_back(Box({
                 props.getBox3("bounds")
             }));
         }
         for (auto jsonSphere : jsonScene["spheres"].array_items()) {
             Properties props(jsonSphere);
-            scene.spheres.emplace_back(Scene::Sphere({
+            scene.spheres.emplace_back(Sphere({
                 props.getVector3("position"),
                 props.getFloat("radius")
+            }));
+        }
+        for (auto jsonSphere : jsonScene["meshes"].array_items()) {
+            Properties props(jsonSphere);
+            scene.meshes.emplace_back(Mesh({
+                props.getString("filename"),
             }));
         }
     }
