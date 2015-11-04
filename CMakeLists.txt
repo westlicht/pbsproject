@@ -93,6 +93,8 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/nanogui/include
   # Intel Thread Building Blocks
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb/include
+  # Filesystem
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/filesystem
   # Disjoint set data structure
   # ${CMAKE_CURRENT_SOURCE_DIR}/ext/dset
   # Parallel stable sort
