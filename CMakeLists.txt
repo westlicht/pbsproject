@@ -155,6 +155,7 @@ add_executable(pbsproject #MACOSX_BUNDLE
   src/geometry/ObjReader.h src/geometry/ObjReader.cpp
   src/geometry/ObjWriter.h src/geometry/ObjWriter.cpp
   src/geometry/ParticleMesher.h src/geometry/ParticleMesher.cpp
+  src/geometry/SDF.h src/geometry/SDF.cpp
   src/geometry/VoxelGrid.h
   src/geometry/Voxelizer.h src/geometry/Voxelizer.cpp
 
