@@ -160,6 +160,7 @@ add_executable(pbsproject #MACOSX_BUNDLE
   src/geometry/Mesh.h src/geometry/Mesh.cpp
   src/geometry/ObjReader.h src/geometry/ObjReader.cpp
   src/geometry/ObjWriter.h src/geometry/ObjWriter.cpp
+  src/geometry/ParticleGenerator.h src/geometry/ParticleGenerator.cpp
   src/geometry/ParticleMesher.h src/geometry/ParticleMesher.cpp
   src/geometry/SDF.h src/geometry/SDF.cpp
   src/geometry/VoxelGrid.h
