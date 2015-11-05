@@ -106,6 +106,8 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/stb
   # json11
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/json11
+  # tinydir
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinydir
   # Resource file
   ${CMAKE_CURRENT_BINARY_DIR}
 )
