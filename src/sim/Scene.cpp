@@ -4,6 +4,8 @@
 #include "core/Vector.h"
 #include "core/Box.h"
 
+#include <filesystem/path.h>
+#include <filesystem/resolver.h>
 #include <tinyformat.h>
 #include <json11.h>
 
@@ -60,6 +62,12 @@ Scene Scene::load(const std::string &filename) {
 
     Scene scene;
 
+    filesystem::resolver resolver;
+    resolver.prepend(filesystem::path(filename).parent_path());
+    auto resolvePath = [&resolver] (const std::string &path) {
+        return resolver.resolve(path).str();
+    };
+
     scene.settings = Properties(jsonRoot["settings"]);
 
     // Parse scene objects
@@ -86,7 +94,7 @@ Scene Scene::load(const std::string &filename) {
         for (auto jsonSphere : jsonScene["meshes"].array_items()) {
             Properties props(jsonSphere);
             scene.meshes.emplace_back(Mesh({
-                props.getString("filename"),
+                resolvePath(props.getString("filename"))
             }));
         }
     }
