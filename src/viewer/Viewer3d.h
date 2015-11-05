@@ -6,6 +6,8 @@
 #include "geometry/ParticleMesher.h"
 #include "sim/SPH.h"
 
+#include "Config.h"
+
 #include <nanogui/checkbox.h>
 #include <nanogui/combobox.h>
 #include <nanogui/glutil.h>
@@ -16,7 +18,9 @@
 #include <nanogui/textbox.h>
 #include <nanogui/window.h>
 
+#include <filesystem/path.h>
 #include <stb_image_write.h>
+#include <tinydir.h>
 
 #include <memory>
 #include <chrono>
@@ -26,15 +30,23 @@ using namespace nanogui;
 // Main screen for 3D viewer.
 class Viewer3d : public Screen {
 public:
-    Viewer3d() : Screen(Vector2i(1200, 800), "PBS Project"), _sph(pbs::Scene::load("../scenes/drop.json")) {
+    Viewer3d() : Screen(Vector2i(1200, 800), "PBS Project") {
+        enumerateSceneFiles(filesystem::path(SCENES_DIR));
+        std::string defaultScene = "drop.json";
+        auto it = std::find(_sceneNames.begin(), _sceneNames.end(), defaultScene);
+        if (it != _sceneNames.end()) {
+            loadScene(_scenePaths[it - _sceneNames.begin()]);
+        } else {
+            _sph.reset(new pbs::SPH(pbs::Scene()));
+        }
+
         initializeGUI();
         _startTime = std::chrono::high_resolution_clock::now();
         _lastTime = 0;
-        _viewOrigin = _sph.bounds().center();
+        _viewOrigin = _sph->bounds().center();        
     }
 
     ~Viewer3d() {
-
     }
 
     void framebufferSizeChanged() {
@@ -93,8 +105,21 @@ public:
                 case GLFW_KEY_SPACE:
                     _isRunning = !_isRunning;
                     break;
+                case GLFW_KEY_B:
+                    _showBounds = !_showBounds;
+                    break;
+                case GLFW_KEY_G:
+                    _showGrid = !_showGrid;
+                    break;
+                case GLFW_KEY_P:
+                    _showParticles = !_showParticles;
+                    break;
+                case GLFW_KEY_M:
+                    _showMeshes = !_showMeshes;
+                    break;
                 }
             }
+            refresh();
         }
         return true;
     }
@@ -102,20 +127,20 @@ public:
 
     void drawContents() override {
 
-        const float dt = _sph.maxTimestep();
+        const float dt = _sph->maxTimestep();
 
         if (_isAnimation) {
             int steps = int((1.f / _animationFPS) / dt);
             for (int i = 0; i < steps; ++i) {
                 pbs::Timer timer;
-                _sph.update(dt);
+                _sph->update(dt);
             }
             if (_showMeshes) {
                 createMesh();
             }
         } else if (_isRunning) {
             pbs::Timer timer;
-            _sph.update(dt);
+            _sph->update(dt);
         }
 
         Matrix4f view, proj, model;
@@ -136,11 +161,11 @@ public:
             _gridPainter->draw(mvp);
         }
         if (_showBounds) {
-            _boxPainter->draw(mvp, _sph.bounds());
+            _boxPainter->draw(mvp, _sph->bounds());
         }
         if (_showParticles) {
-            //_particlePainter->draw(mvp, _sph.positions());
-            _sphereParticlePainter->draw(mv, proj, _sph.positions());
+            //_particlePainter->draw(mvp, _sph->positions());
+            _sphereParticlePainter->draw(mv, proj, _sph->positions());
         }
         if (_showMeshes) {
             _meshPainter->draw(mvp);
@@ -153,15 +178,18 @@ public:
     }
 
     void refresh() {
-        _stiffnessSlider->setValue(pbs::rangeToUnit(_sph.settings().stiffness, 0.5f, 10.f));
-        _stiffnessTextBox->setValue(tfm::format("%.1f", _sph.settings().stiffness));
-        _viscositySlider->setValue(pbs::rangeToUnit(_sph.settings().viscosity, 0.5f, 100.f));
-        _viscosityTextBox->setValue(tfm::format("%.1f", _sph.settings().viscosity));
+        _stiffnessSlider->setValue(pbs::rangeToUnit(_sph->settings().stiffness, 0.5f, 10.f));
+        _stiffnessTextBox->setValue(tfm::format("%.1f", _sph->settings().stiffness));
+        _viscositySlider->setValue(pbs::rangeToUnit(_sph->settings().viscosity, 0.5f, 100.f));
+        _viscosityTextBox->setValue(tfm::format("%.1f", _sph->settings().viscosity));
+
+        _showGridCheckBox->setChecked(_showGrid);
+        _showBoundsCheckBox->setChecked(_showBounds);
+        _showParticlesCheckBox->setChecked(_showParticles);
+        _showMeshesCheckBox->setChecked(_showMeshes);
     }
 
     void initializeGUI() {
-        _sceneNames = { "Default" };
-
         Widget *panel;
 
         _window = new Window(this, "Settings");
@@ -172,7 +200,7 @@ public:
 
         _sceneComboBox = new ComboBox(_window, _sceneNames);
         _sceneComboBox->setCallback([&] (int i) {
-            //loadScene(_sceneNames[i]);
+            loadScene(_scenePaths[i]);
             refresh();
         });
 
@@ -181,7 +209,7 @@ public:
         panel->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 20));
         _stiffnessSlider = new Slider(panel);
         _stiffnessSlider->setFixedWidth(100);
-        _stiffnessSlider->setCallback([&] (float f) { _sph.settings().stiffness = pbs::unitToRange(f, 0.5f, 10.f); refresh(); });
+        _stiffnessSlider->setCallback([&] (float f) { _sph->settings().stiffness = pbs::unitToRange(f, 0.5f, 10.f); refresh(); });
         _stiffnessTextBox = new TextBox(panel);
         _stiffnessTextBox->setFixedSize(Vector2i(80, 25));
 
@@ -190,7 +218,7 @@ public:
         panel->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 20));
         _viscositySlider = new Slider(panel);
         _viscositySlider->setFixedWidth(100);
-        _viscositySlider->setCallback([&] (float f) { _sph.settings().viscosity = pbs::unitToRange(f, 0.5f, 100.f); refresh(); });
+        _viscositySlider->setCallback([&] (float f) { _sph->settings().viscosity = pbs::unitToRange(f, 0.5f, 100.f); refresh(); });
         _viscosityTextBox = new TextBox(panel);
         _viscosityTextBox->setFixedSize(Vector2i(80, 25));
 
@@ -209,18 +237,14 @@ public:
         _meshPainter.reset(new pbs::MeshPainter());
 
         new Label(_window, "Display", "sans-bold");
-        CheckBox *showGridCheckBox = new CheckBox(_window, "Show Grid");
-        showGridCheckBox->setChecked(_showGrid);
-        showGridCheckBox->setCallback([&] (bool b) { _showGrid = b; refresh(); });
-        CheckBox *showBoundsCheckBox = new CheckBox(_window, "Show Bounds");
-        showBoundsCheckBox->setChecked(_showBounds);
-        showBoundsCheckBox->setCallback([&] (bool b) { _showBounds = b; refresh(); });
-        CheckBox *showParticlesCheckBox = new CheckBox(_window, "Show Particles");
-        showParticlesCheckBox->setChecked(_showParticles);
-        showParticlesCheckBox->setCallback([&] (bool b) { _showParticles = b; refresh(); });
-        CheckBox *showMeshesCheckBox = new CheckBox(_window, "Show Meshes");
-        showMeshesCheckBox->setChecked(_showMeshes);
-        showMeshesCheckBox->setCallback([&] (bool b) { _showMeshes = b; refresh(); });
+        _showGridCheckBox = new CheckBox(_window, "Show Grid (G)");
+        _showGridCheckBox->setCallback([&] (bool b) { _showGrid = b; refresh(); });
+        _showBoundsCheckBox = new CheckBox(_window, "Show Bounds (B)");
+        _showBoundsCheckBox->setCallback([&] (bool b) { _showBounds = b; refresh(); });
+        _showParticlesCheckBox = new CheckBox(_window, "Show Particles (P)");
+        _showParticlesCheckBox->setCallback([&] (bool b) { _showParticles = b; refresh(); });
+        _showMeshesCheckBox = new CheckBox(_window, "Show Meshes (M)");
+        _showMeshesCheckBox->setCallback([&] (bool b) { _showMeshes = b; refresh(); });
 
         new Label(_window, "Options", "sans-bold");
         CheckBox *anisotropicMeshCheckBox = new CheckBox(_window, "Anisotropic Mesh");
@@ -242,16 +266,16 @@ public:
 private:
     void createMesh() {
         pbs::ParticleMesher::Parameters params;
-        params.supportParticles = _sph.parameters().supportParticles;
-        params.particlesPerUnitVolume = _sph.parameters().particlesPerUnitVolume;
-        params.restDensity = _sph.parameters().restDensity;
-        params.restSpacing = _sph.parameters().restSpacing;
-        params.particleMass = _sph.parameters().particleMass;
-        params.h = _sph.parameters().h;
+        params.supportParticles = _sph->parameters().supportParticles;
+        params.particlesPerUnitVolume = _sph->parameters().particlesPerUnitVolume;
+        params.restDensity = _sph->parameters().restDensity;
+        params.restSpacing = _sph->parameters().restSpacing;
+        params.particleMass = _sph->parameters().particleMass;
+        params.h = _sph->parameters().h;
         params.isoLevel = 0.2f;
 
-        pbs::MatrixXf positions = _sph.positions();
-        pbs::Box3f bounds = _sph.bounds().expanded(_sph.bounds().extents() * 0.05f); // expand bounds by 5% of diagonal
+        pbs::MatrixXf positions = _sph->positions();
+        pbs::Box3f bounds = _sph->bounds().expanded(_sph->bounds().extents() * 0.05f); // expand bounds by 5% of diagonal
         pbs::Vector3i cells(256);
 
         pbs::Mesh mesh = _anisotropicMesh ?
@@ -264,8 +288,6 @@ private:
 
     void clearMesh() {
         _meshPainter->setMesh(pbs::Mesh());
-
-        screenshot("test.png");
     }
 
     void renderAnimation() {
@@ -277,8 +299,28 @@ private:
     void screenshot(const std::string &filename) {
         std::unique_ptr<unsigned char[]> pixels(new unsigned char[mSize.prod() * 3]);
         glReadPixels(0, 0, mSize.x(), mSize.y(), GL_RGB, GL_UNSIGNED_BYTE, pixels.get());
-
         stbi_write_png(filename.c_str(), mSize.x(), mSize.y(), 3, pixels.get() + (3 * mSize.x() * (mSize.y() - 1)), -3 * mSize.x());
+    }
+
+    void enumerateSceneFiles(const filesystem::path &path) {
+        tinydir_dir dir;
+        std::string s = path.str();
+        tinydir_open_sorted(&dir, s.c_str());
+        for (size_t i = 0; i < dir.n_files; ++i) {
+            tinydir_file file;
+            tinydir_readfile_n(&dir, &file, i);
+            if (file.is_reg) {
+                _sceneNames.emplace_back(file.name);
+                _scenePaths.emplace_back(path / file.name);
+            }
+        }
+        tinydir_close(&dir);        
+    }
+
+    void loadScene(const filesystem::path &path) {
+        pbs::DBG("Loading scene from '%s' ...", path.str());
+        _sph.reset(new pbs::SPH(pbs::Scene::load(path.str())));
+        _viewOrigin = _sph->bounds().center();
     }
 
     Window *_window;
@@ -288,7 +330,13 @@ private:
     Slider *_viscositySlider;
     TextBox *_viscosityTextBox;
 
+    CheckBox *_showGridCheckBox;
+    CheckBox *_showBoundsCheckBox;
+    CheckBox *_showParticlesCheckBox;
+    CheckBox *_showMeshesCheckBox;
+
     std::vector<std::string> _sceneNames;
+    std::vector<filesystem::path> _scenePaths;
 
     bool _showGrid = true;
     bool _showBounds = true;
@@ -311,7 +359,7 @@ private:
     std::unique_ptr<pbs::SphereParticlePainter> _sphereParticlePainter;
     std::unique_ptr<pbs::MeshPainter> _meshPainter;
 
-    pbs::SPH _sph;
+    std::unique_ptr<pbs::SPH> _sph;
 
     std::chrono::high_resolution_clock::time_point _startTime;
     double _lastTime;
