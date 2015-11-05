@@ -129,6 +129,10 @@ include_directories(
 #   list(APPEND BIN2C_CMDLINE ${file})
 # endforeach()
 
+# Create config file and add to include directories
+configure_file("${PROJECT_SOURCE_DIR}/src/Config.h.in" "${PROJECT_BINARY_DIR}/Config.h")
+include_directories(${PROJECT_BINARY_DIR})
+
 set(EXTRA_SOURCE "")
 if (APPLE)
   # set(EXTRA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/im.icns")

@@ -1,0 +1,3 @@
+#pragma once
+
+#define SCENES_DIR "@CMAKE_SOURCE_DIR@/scenes"
