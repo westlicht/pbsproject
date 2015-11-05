@@ -94,12 +94,23 @@ Scene Scene::load(const std::string &filename) {
         for (auto jsonSphere : jsonScene["meshes"].array_items()) {
             Properties props(jsonSphere);
             scene.meshes.emplace_back(Mesh({
-                resolvePath(props.getString("filename"))
+                resolvePath(props.getString("filename")),
+                typeFromString(props.getString("type", "blocker"))
             }));
         }
     }
 
     return scene;
+}
+
+Scene::Type Scene::typeFromString(const std::string &name) {
+    if (name == "liquid") {
+        return Liquid;
+    } else if (name == "blocker") {
+        return Blocker;
+    } else {
+        throw Exception("Unknown type name '%s'", name);
+    }
 }
 
 } // namespace pbs

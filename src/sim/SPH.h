@@ -19,6 +19,7 @@
 #include "geometry/ObjReader.h"
 #include "geometry/Voxelizer.h"
 #include "geometry/VoxelGrid.h"
+#include "geometry/ParticleGenerator.h"
 
 #include <tbb/tbb.h>
 
@@ -242,7 +243,7 @@ public:
     }
 
     void computeCollisions(std::function<void(size_t i, const Vector3f &n, float d)> handler) {
-        for (size_t i = 0; i < _positions.size() - 1; ++i) {
+        for (size_t i = 0; i < _positions.size(); ++i) {
             const auto &p = _positions[i];
             if (p.x() < _bounds.min.x()) {
                 handler(i, Vector3f(1.f, 0.f, 0.f), _bounds.min.x() - p.x());
@@ -380,11 +381,15 @@ public:
 
     void voxelizeMesh(const Scene::Mesh &sceneMesh) {
         Mesh mesh = ObjReader::load(sceneMesh.filename);
-        Voxelizer::voxelize(mesh, _restSpacing, _positions);
+        if (sceneMesh.type == Scene::Liquid) {
+            Voxelizer::voxelize(mesh, _restSpacing, _positions);
+        } else {
+            auto positions = ParticleGenerator::generateSurfaceParticles(mesh, 1000.f);
+            _blockerPositions.insert(_blockerPositions.end(), positions.begin(), positions.end());
+        }
     }
 
     const Box3f &bounds() const { return _bounds; }
-    //const ParticleVector &particles() const { return _particles; }
 
     // Returns a set of simulation parameters
     Parameters parameters() const {
@@ -406,6 +411,16 @@ public:
         positions.resize(3, _positions.size());
         for (size_t i = 0; i < _positions.size(); ++i) {
             positions.col(i) = _positions[i];
+        }
+        return std::move(positions);
+    }
+
+    // Returns particle positions in matrix form
+    MatrixXf blockerPositions() const {
+        MatrixXf positions;
+        positions.resize(3, _blockerPositions.size());
+        for (size_t i = 0; i < _blockerPositions.size(); ++i) {
+            positions.col(i) = _blockerPositions[i];
         }
         return std::move(positions);
     }
@@ -445,6 +460,9 @@ private:
     std::vector<Vector3f> _forces;
     std::vector<float> _densities;
     std::vector<float> _pressures;
+
+    // Blocker particle buffers
+    std::vector<Vector3f> _blockerPositions;
 
     float _t = 0.f;
 };

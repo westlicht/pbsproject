@@ -157,8 +157,8 @@ public:
             _boxPainter->draw(mvp, _sph->bounds());
         }
         if (_showParticles) {
-            //_particlePainter->draw(mvp, _sph->positions());
-            _sphereParticlePainter->draw(mv, proj, _sph->positions());
+            _particlePainter->draw(mv, proj, _sph->positions(), Color(0.5f, 0.5f, 1.f, 1.f));
+            _particlePainter->draw(mv, proj, _sph->blockerPositions(), Color(1.f, 0.5f, 0.5f, 1.f));
         }
         if (_showMeshes) {
             _meshPainter->draw(mvp);
@@ -231,8 +231,7 @@ public:
         
         _gridPainter.reset(new pbs::GridPainter());
         _boxPainter.reset(new pbs::BoxPainter());
-        _particlePainter.reset(new pbs::ParticlePainter());
-        _sphereParticlePainter.reset(new pbs::SphereParticlePainter());
+        _particlePainter.reset(new pbs::SphereParticlePainter());
         _meshPainter.reset(new pbs::MeshPainter());
 
         new Label(_window, "Display", "sans-bold");
@@ -353,8 +352,7 @@ private:
     Vector3f _viewOrigin = Vector3f(0.f, 0.f, 0.f);
     std::unique_ptr<pbs::GridPainter> _gridPainter;
     std::unique_ptr<pbs::BoxPainter> _boxPainter;
-    std::unique_ptr<pbs::ParticlePainter> _particlePainter;
-    std::unique_ptr<pbs::SphereParticlePainter> _sphereParticlePainter;
+    std::unique_ptr<pbs::SphereParticlePainter> _particlePainter;
     std::unique_ptr<pbs::MeshPainter> _meshPainter;
 
     std::unique_ptr<pbs::SPH> _sph;

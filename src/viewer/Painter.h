@@ -168,6 +168,7 @@ struct SphereParticlePainter {
             "}",
             // Fragment shader
             "#version 330\n"
+            "uniform vec4 color;\n"
             "in vec2 gPosition;\n"
             "out vec4 out_color;\n"
             "void main() {\n"
@@ -177,8 +178,7 @@ struct SphereParticlePainter {
             "    n.z = 1.0 - sqrt(r2);\n"
             "    vec3 L = normalize(vec3(1.0));\n"
             "    float d = max(0.0, dot(L, n));\n"
-            "    out_color = vec4(d * vec3(0.6,0.6,1.0), 0.0);\n"
-            //"    out_color = vec4(gPosition + 0.5, 0.0, 0.0);\n"
+            "    out_color = vec4(d * color.xyz, color.w);\n"
             "}",
             // Geometry shader
             "#version 330\n"
@@ -208,12 +208,13 @@ struct SphereParticlePainter {
         );
     }
 
-    void draw(const Matrix4f &mv, const Matrix4f &proj, const MatrixXf &positions, float particleSize = 0.03f) {
+    void draw(const Matrix4f &mv, const Matrix4f &proj, const MatrixXf &positions, const Color &color, float particleSize = 0.03f) {
         shader.bind();
         shader.uploadAttrib("position", positions);
         shader.setUniform("mv", mv);
         shader.setUniform("proj", proj);
         shader.setUniform("particleSize", particleSize);
+        shader.setUniform("color", color);
         glEnable(GL_DEPTH_TEST);
         shader.drawArray(GL_POINTS, 0, positions.cols());
     }

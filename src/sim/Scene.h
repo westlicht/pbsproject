@@ -12,6 +12,11 @@ namespace pbs {
 
 class Scene {
 public:
+    enum Type {
+        Liquid,
+        Blocker
+    };
+
     struct World {
         Box3f bounds;
     };
@@ -24,6 +29,7 @@ public:
     };
     struct Mesh {
         std::string filename;
+        Type type;
     };
 
     Properties settings;
@@ -40,6 +46,8 @@ public:
     static Scene load(const std::string &filename);
 
 private:
+    static Type typeFromString(const std::string &name);
+
 };
 
 
