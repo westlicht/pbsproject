@@ -31,19 +31,12 @@ using namespace nanogui;
 class Viewer3d : public Screen {
 public:
     Viewer3d() : Screen(Vector2i(1200, 800), "PBS Project") {
-        enumerateSceneFiles(filesystem::path(SCENES_DIR));
-        std::string defaultScene = "drop.json";
-        auto it = std::find(_sceneNames.begin(), _sceneNames.end(), defaultScene);
-        if (it != _sceneNames.end()) {
-            loadScene(_scenePaths[it - _sceneNames.begin()]);
-        } else {
-            _sph.reset(new pbs::SPH(pbs::Scene()));
-        }
-
-        initializeGUI();
+        _sceneNames = findScenes(SCENES_DIR);
+        _sph.reset(new pbs::SPH(pbs::Scene()));
         _startTime = std::chrono::high_resolution_clock::now();
         _lastTime = 0;
         _viewOrigin = _sph->bounds().center();        
+        initializeGUI();
     }
 
     ~Viewer3d() {
@@ -200,9 +193,15 @@ public:
 
         _sceneComboBox = new ComboBox(_window, _sceneNames);
         _sceneComboBox->setCallback([&] (int i) {
-            loadScene(_scenePaths[i]);
+            loadScene(filesystem::path(SCENES_DIR) / _sceneNames[i]);
             refresh();
         });
+        // Load default scene
+        auto it = std::find(_sceneNames.begin(), _sceneNames.end(), "drop.json");
+        if (it != _sceneNames.end()) {
+            loadScene(filesystem::path(SCENES_DIR) / *it);
+            _sceneComboBox->setSelectedIndex(std::distance(_sceneNames.begin(), it));
+        }
 
         new Label(_window, "Stiffness", "sans-bold");
         panel = new Widget(_window);
@@ -302,19 +301,19 @@ private:
         stbi_write_png(filename.c_str(), mSize.x(), mSize.y(), 3, pixels.get() + (3 * mSize.x() * (mSize.y() - 1)), -3 * mSize.x());
     }
 
-    void enumerateSceneFiles(const filesystem::path &path) {
+    std::vector<std::string> findScenes(const std::string &path) {
+        std::vector<std::string> scenes;
         tinydir_dir dir;
-        std::string s = path.str();
-        tinydir_open_sorted(&dir, s.c_str());
+        tinydir_open_sorted(&dir, path.c_str());
         for (size_t i = 0; i < dir.n_files; ++i) {
             tinydir_file file;
             tinydir_readfile_n(&dir, &file, i);
             if (file.is_reg) {
-                _sceneNames.emplace_back(file.name);
-                _scenePaths.emplace_back(path / file.name);
+                scenes.emplace_back(file.name);
             }
         }
         tinydir_close(&dir);        
+        return scenes;
     }
 
     void loadScene(const filesystem::path &path) {
@@ -336,7 +335,6 @@ private:
     CheckBox *_showMeshesCheckBox;
 
     std::vector<std::string> _sceneNames;
-    std::vector<filesystem::path> _scenePaths;
 
     bool _showGrid = true;
     bool _showBounds = true;
