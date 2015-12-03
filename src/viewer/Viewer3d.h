@@ -108,6 +108,9 @@ public:
                 case GLFW_KEY_M:
                     _showMeshes = !_showMeshes;
                     break;
+                case GLFW_KEY_D:
+                    _showDebug = !_showDebug;
+                    break;
                 }
             }
             refresh();
@@ -115,9 +118,41 @@ public:
         return true;
     }
 
+    void drawDebug() {
+        auto ctx = mNVGContext;
+        nvgBeginFrame(ctx, mSize[0], mSize[1], mPixelRatio);
+        nvgResetTransform(ctx);
+        nvgFillColor(ctx, Color(255, 255));
+        nvgFontSize(ctx, 18.f);
+        nvgFontBlur(ctx, 0.f);
+
+        float x = mSize[0] - 200.f;
+        float y = 28.f;
+
+#if 0
+        auto drawText = [&ctx, &x, &y] (const std::string &text) {
+            nvgText(ctx, x, y, text.c_str(), nullptr);
+            y += 20.f;
+        };
+#endif
+
+        auto drawProfilerItem = [&ctx, &x, &y] (const std::string &name, double ms) {
+            nvgText(ctx, x, y, name.c_str(), nullptr);
+            nvgText(ctx, x + 140.f, y, tfm::format("%.1f ms", ms).c_str(), nullptr);
+            y += 20.f;
+        };
+
+        double totalTime = 0.0;
+        for (const auto &item : pbs::Profiler::items()) {
+            drawProfilerItem(item.name, item.avg);
+            totalTime += item.avg;
+        }
+        drawProfilerItem("Total", totalTime);
+
+        nvgEndFrame(ctx);
+    }
 
     void drawContents() override {
-
         const float dt = _sph->maxTimestep();
 
         if (_isAnimation) {
@@ -161,9 +196,12 @@ public:
             _meshPainter->draw(mvp);
         }
 
-
         if (_isAnimation) {
             screenshot(tfm::format("frame%04d.png", _animationFrame++));
+        }
+
+        if (_showDebug) {
+            drawDebug();
         }
     }
 
@@ -172,6 +210,7 @@ public:
         _showBoundsCheckBox->setChecked(_showBounds);
         _showParticlesCheckBox->setChecked(_showParticles);
         _showMeshesCheckBox->setChecked(_showMeshes);
+        _showDebugCheckBox->setChecked(_showDebug);
     }
 
     void initializeGUI() {
@@ -215,6 +254,8 @@ public:
         _showParticlesCheckBox->setCallback([&] (bool b) { _showParticles = b; refresh(); });
         _showMeshesCheckBox = new CheckBox(_window, "Show Meshes (M)");
         _showMeshesCheckBox->setCallback([&] (bool b) { _showMeshes = b; refresh(); });
+        _showDebugCheckBox = new CheckBox(_window, "Show Debug (D)");
+        _showDebugCheckBox->setCallback([&] (bool b) { _showDebug = b; refresh(); });
 
         new Label(_window, "Options", "sans-bold");
         CheckBox *anisotropicMeshCheckBox = new CheckBox(_window, "Anisotropic Mesh");
@@ -300,6 +341,7 @@ private:
     CheckBox *_showBoundsCheckBox;
     CheckBox *_showParticlesCheckBox;
     CheckBox *_showMeshesCheckBox;
+    CheckBox *_showDebugCheckBox;
 
     std::vector<std::string> _sceneNames;
 
@@ -307,6 +349,7 @@ private:
     bool _showBounds = true;
     bool _showParticles = true;
     bool _showMeshes = true;
+    bool _showDebug = true;
     bool _anisotropicMesh = false;
     bool _isRunning = false;
     bool _leftButton = false;
