@@ -1,6 +1,7 @@
 #include "ParticleGenerator.h"
 #include "SDF.h"
 #include "Mesh.h"
+#include "Voxelizer.h"
 
 #include "core/Common.h"
 #include "core/Vector.h"
@@ -12,9 +13,11 @@
 
 namespace pbs {
 
-ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Box3f &box, float particleRadius, bool flipNormals) {
+ParticleGenerator::Boundary ParticleGenerator::generateBoundaryBox(const Box3f &box, float particleRadius, bool flipNormals) {
     Vector3f origin = box.min;
     Vector3f extents = box.extents();
+
+    particleRadius *= 0.7;
 
     int nx = std::ceil(extents.x() / (2.f * particleRadius));
     int ny = std::ceil(extents.y() / (2.f * particleRadius));
@@ -23,11 +26,10 @@ ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Box3
 
     float normalScale = flipNormals ? 1.f : -1.f;
 
-    std::vector<Vector3f> positions;
-    std::vector<Vector3f> normals;
-    auto addParticle = [&positions, &normals, &origin, &d, &normalScale] (int x, int y, int z, const Vector3f &n) {
-        positions.emplace_back(origin + Vector3f(x, y, z).cwiseProduct(d));
-        normals.emplace_back(n * normalScale);
+    Boundary result;
+    auto addParticle = [&result, &origin, &d, &normalScale] (int x, int y, int z, const Vector3f &n) {
+        result.positions.emplace_back(origin + Vector3f(x, y, z).cwiseProduct(d));
+        result.normals.emplace_back(n * normalScale);
     };
 
     // XY planes
@@ -80,11 +82,15 @@ ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Box3
         addParticle(x ? 0 : nx, y ? 0 : ny, z ? 0 : nz, Vector3f(x ? 1.f : -1.f, y ? 1.f : -1.f, z ? 1.f : -1.f).normalized());
     }
 
-
-    return Result({ std::move(positions), std::move(normals) });
+    return result;
 }
 
-ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Mesh &mesh, float particleRadius, int cells) {
+ParticleGenerator::Boundary ParticleGenerator::generateBoundarySphere(const Vector3f &position, float radius, float particleRadius) {
+    // TODO implement
+    return Boundary();
+}
+
+ParticleGenerator::Boundary ParticleGenerator::generateBoundaryMesh(const Mesh &mesh, float particleRadius, int cells) {
 
     float density = 1.f / (M_PI * sqr(particleRadius));
     DBG("density = %f", density);
@@ -114,7 +120,7 @@ ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Mesh
     // Generate initial point distribution
     DBG("Generating initial point distribution ...");
     pcg32 rng;
-    std::vector<Vector3f> positions;
+    Boundary result;
     float totalArea = 0.f;
     for (int i = 0; i < mesh.triangles().cols(); ++i) {
         const Vector3f &p0 = mesh.vertices().col(mesh.triangles()(0, i));
@@ -132,7 +138,7 @@ ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Mesh
             float s = rng.nextFloat();
             float t = rng.nextFloat();
             float ss = std::sqrt(s);
-            positions.emplace_back(p0 + e0 * t * ss + e1 * (1.f - ss));
+            result.positions.emplace_back(p0 + e0 * t * ss + e1 * (1.f - ss));
         };
 
         for (int j = 0; j < ni; ++j) {
@@ -142,22 +148,22 @@ ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Mesh
             samplePoint();
         }
     }
-    DBG("Generated %d points", positions.size());
+    DBG("Generated %d points", result.positions.size());
 
     // Relax point distribution
     DBG("Relaxing point distribution ...");
 
     // Choose radius to support roughly 10 neighbour particles
-    float radius = std::sqrt(totalArea / positions.size() * 10.f / M_PI);
+    float radius = std::sqrt(totalArea / result.positions.size() * 10.f / M_PI);
     float radius2 = sqr(radius);
 
     for (int iteration = 0; iteration < 10; ++iteration) {
         int count = 0;
-        std::vector<Vector3f> velocities(positions.size(), Vector3f());
+        std::vector<Vector3f> velocities(result.positions.size(), Vector3f());
         // Relax positions
-        for (size_t i = 0; i < positions.size(); ++i) {
-            for (size_t j = i + 1; j < positions.size(); ++j) {
-                Vector3f r = positions[j] - positions[i];
+        for (size_t i = 0; i < result.positions.size(); ++i) {
+            for (size_t j = i + 1; j < result.positions.size(); ++j) {
+                Vector3f r = result.positions[j] - result.positions[i];
                 float r2 = r.squaredNorm();
                 if (r2 < radius2) {
                     r *= (1.f / std::sqrt(r2));
@@ -167,24 +173,83 @@ ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Mesh
                     ++count;
                 }
             }
-            positions[i] += velocities[i];
+            result.positions[i] += velocities[i];
         }
         // Reproject to surface
-        for (size_t i = 0; i < positions.size(); ++i) {
-            Vector3f p = sdf.toVoxelSpace(positions[i]);
+        for (size_t i = 0; i < result.positions.size(); ++i) {
+            Vector3f p = sdf.toVoxelSpace(result.positions[i]);
             Vector3f n = sdf.gradient(p).normalized();
-            positions[i] -= sdf.trilinear(p) * n;
+            result.positions[i] -= sdf.trilinear(p) * n;
         }
-        DBG("avg neighbours = %d", 2 * count / positions.size());
+        DBG("avg neighbours = %d", 2 * count / result.positions.size());
     }
 
     // Compute normals
-    std::vector<Vector3f> normals(positions.size());
-    for (size_t i = 0; i < positions.size(); ++i) {
-        normals[i] = sdf.gradient(sdf.toVoxelSpace(positions[i])).normalized();
+    result.normals.resize(result.positions.size());
+    for (size_t i = 0; i < result.positions.size(); ++i) {
+        result.normals[i] = sdf.gradient(sdf.toVoxelSpace(result.positions[i])).normalized();
     }
 
-    return Result({ std::move(positions), std::move(normals) });
+    return result;
 }
+
+ParticleGenerator::Volume ParticleGenerator::generateVolumeBox(const Box3f &box, float particleRadius) {
+    float spacing = 2.f * particleRadius;
+    Vector3i min(
+        int(std::ceil(box.min.x() / spacing)),
+        int(std::ceil(box.min.y() / spacing)),
+        int(std::ceil(box.min.z() / spacing))
+    );
+    Vector3i max(
+        int(std::floor(box.max.x() / spacing)),
+        int(std::floor(box.max.y() / spacing)),
+        int(std::floor(box.max.z() / spacing))
+    );
+    Volume result;
+    for (int z = min.z(); z <= max.z(); ++z) {
+        for (int y = min.y(); y <= max.y(); ++y) {
+            for (int x = min.x(); x <= max.x(); ++x) {
+                Vector3f p(x * spacing, y * spacing, z * spacing);
+                result.positions.emplace_back(p);
+            }
+        }
+    }
+    return result;
+}
+
+ParticleGenerator::Volume ParticleGenerator::generateVolumeSphere(const Vector3f &center, float radius, float particleRadius) {
+    float spacing = 2.f * particleRadius;
+    Vector3i min(
+        int(std::ceil((center.x() - radius) / spacing)),
+        int(std::ceil((center.y() - radius) / spacing)),
+        int(std::ceil((center.z() - radius) / spacing))
+    );
+    Vector3i max(
+        int(std::floor((center.x() + radius) / spacing)),
+        int(std::floor((center.y() + radius) / spacing)),
+        int(std::floor((center.z() + radius) / spacing))
+    );
+    Volume result;
+    float r2 = sqr(radius);
+    for (int z = min.z(); z <= max.z(); ++z) {
+        for (int y = min.y(); y <= max.y(); ++y) {
+            for (int x = min.x(); x <= max.x(); ++x) {
+                Vector3f p(x * spacing, y * spacing, z * spacing);
+                if ((p - center).squaredNorm() <= r2) {
+                    result.positions.emplace_back(p);
+                }
+            }
+        }
+    }
+    return result;
+}
+
+ParticleGenerator::Volume ParticleGenerator::generateVolumeMesh(const Mesh &mesh, float particleRadius) {
+    Volume result;
+    Voxelizer::voxelize(mesh, 2.f * particleRadius, result.positions);
+    return result;
+}
+
+
 
 } // namespace pbs

@@ -16,6 +16,25 @@ using namespace json11;
 
 namespace pbs {
 
+filesystem::resolver Scene::_resolver;
+
+Scene::Shape::Shape(const Properties &props) {
+    type = typeFromString(props.getString("type", "fluid"));
+}
+
+Scene::Box::Box(const Properties &props) : Shape(props) {
+    bounds = props.getBox3("bounds");
+}
+
+Scene::Sphere::Sphere(const Properties &props) : Shape(props) {
+    position = props.getVector3("position");
+    radius = props.getFloat("radius");
+}
+
+Scene::Mesh::Mesh(const Properties &props) : Shape(props) {
+    filename = resolvePath(props.getString("filename"));
+}
+
 Scene::Scene() {
     world.bounds = Box3f(Vector3f(-1.f), Vector3f(1.f));
 }
@@ -60,14 +79,10 @@ Scene Scene::load(const std::string &filename) {
         throw Exception("Failed to load scene from '%s' (error: %s)", filename, err);
     }
 
+    _resolver = filesystem::resolver();
+    _resolver.prepend(filesystem::path(filename).parent_path());
+
     Scene scene;
-
-    filesystem::resolver resolver;
-    resolver.prepend(filesystem::path(filename).parent_path());
-    auto resolvePath = [&resolver] (const std::string &path) {
-        return resolver.resolve(path).str();
-    };
-
     scene.settings = Properties(jsonRoot["settings"]);
 
     // Parse scene objects
@@ -79,24 +94,13 @@ Scene Scene::load(const std::string &filename) {
             scene.world.bounds = props.getBox3("bounds");
         }
         for (auto jsonBox : jsonScene["boxes"].array_items()) {
-            Properties props(jsonBox);
-            scene.boxes.emplace_back(Box({
-                props.getBox3("bounds")
-            }));
+            scene.boxes.emplace_back(Box(Properties(jsonBox)));
         }
         for (auto jsonSphere : jsonScene["spheres"].array_items()) {
-            Properties props(jsonSphere);
-            scene.spheres.emplace_back(Sphere({
-                props.getVector3("position"),
-                props.getFloat("radius")
-            }));
+            scene.spheres.emplace_back(Sphere(Properties(jsonSphere)));
         }
-        for (auto jsonSphere : jsonScene["meshes"].array_items()) {
-            Properties props(jsonSphere);
-            scene.meshes.emplace_back(Mesh({
-                resolvePath(props.getString("filename")),
-                typeFromString(props.getString("type", "blocker"))
-            }));
+        for (auto jsonMesh : jsonScene["meshes"].array_items()) {
+            scene.meshes.emplace_back(Mesh(Properties(jsonMesh)));
         }
     }
 
@@ -104,13 +108,17 @@ Scene Scene::load(const std::string &filename) {
 }
 
 Scene::Type Scene::typeFromString(const std::string &name) {
-    if (name == "liquid") {
-        return Liquid;
-    } else if (name == "blocker") {
-        return Blocker;
+    if (name == "fluid") {
+        return Fluid;
+    } else if (name == "boundary") {
+        return Boundary;
     } else {
         throw Exception("Unknown type name '%s'", name);
     }
+}
+
+std::string Scene::resolvePath(const std::string &path) {
+    return _resolver.resolve(path).str();
 }
 
 } // namespace pbs

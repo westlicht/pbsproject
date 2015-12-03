@@ -93,7 +93,7 @@ public:
                 for (int x = min.x(); x <= max.x(); ++x) {
                     size_t i = z * (_size.x() * _size.y()) + y * _size.x() + x;
                     for (size_t j = _cellOffset[i]; j < _cellOffset[i + 1]; ++j) {
-                        func(j);
+                        if (!func(j)) { return; }
                     }
                 }
             }

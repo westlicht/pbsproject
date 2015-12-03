@@ -5,6 +5,8 @@
 #include "core/Box.h"
 #include "core/Properties.h"
 
+#include <filesystem/path.h>
+
 #include <string>
 #include <vector>
 
@@ -13,23 +15,31 @@ namespace pbs {
 class Scene {
 public:
     enum Type {
-        Liquid,
-        Blocker
+        Fluid,
+        Boundary,
     };
 
     struct World {
         Box3f bounds;
     };
-    struct Box {
-        Box3f bounds;
+
+    struct Shape {
+        Type type;
+        Shape(const Properties &props);
     };
-    struct Sphere {
+
+    struct Box : public Shape {
+        Box3f bounds;
+        Box(const Properties &props);
+    };
+    struct Sphere : public Shape {
         Vector3f position;
         float radius;
+        Sphere(const Properties &props);
     };
-    struct Mesh {
+    struct Mesh : public Shape {
         std::string filename;
-        Type type;
+        Mesh(const Properties &props);
     };
 
     Properties settings;
@@ -47,6 +57,8 @@ public:
 
 private:
     static Type typeFromString(const std::string &name);
+    static std::string resolvePath(const std::string &path);
+    static filesystem::resolver _resolver;
 
 };
 
