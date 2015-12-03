@@ -12,7 +12,82 @@
 
 namespace pbs {
 
-std::vector<Vector3f> ParticleGenerator::generateSurfaceParticles(const Mesh &mesh, float density, int cells) {
+ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Box3f &box, float particleRadius) {
+    Vector3f origin = box.min;
+    Vector3f extents = box.extents();
+
+    int nx = std::ceil(extents.x() / (2.f * particleRadius));
+    int ny = std::ceil(extents.y() / (2.f * particleRadius));
+    int nz = std::ceil(extents.z() / (2.f * particleRadius));
+    Vector3f d = extents.cwiseQuotient(Vector3f(nx, ny, nz));
+
+    float normalScale = -1.f;
+
+    std::vector<Vector3f> positions;
+    std::vector<Vector3f> normals;
+    auto addParticle = [&positions, &normals, &origin, &d, &normalScale] (int x, int y, int z, const Vector3f &n) {
+        positions.emplace_back(origin + Vector3f(x, y, z).cwiseProduct(d));
+        normals.emplace_back(n * normalScale);
+    };
+
+    // XY planes
+    for (int x = 1; x < nx; ++x) {
+        for (int y = 1; y < ny; ++y) {
+            addParticle(x, y, 0, Vector3f(0.f, 0.f, 1.f));
+            addParticle(x, y, nz, Vector3f(0.f, 0.f, -1.f));
+        }
+    }
+    // XZ planes
+    for (int x = 1; x < nx; ++x) {
+        for (int z = 1; z < nz; ++z) {
+            addParticle(x, 0, z, Vector3f(0.f, 1.f, 0.f));
+            addParticle(x, ny, z, Vector3f(0.f, -1.f, 0.f));
+        }
+    }
+    // YZ planes
+    for (int y = 1; y < ny; ++y) {
+        for (int z = 1; z < nz; ++z) {
+            addParticle(0, y, z, Vector3f(1.f, 0.f, 0.f));
+            addParticle(nx, y, z, Vector3f(-1.f, 0.f, 0.f));
+        }
+    }
+    // X borders
+    for (int x = 1; x < nx; ++x) {
+        addParticle(x , 0 , 0 , Vector3f( 0.f,  1.f,  1.f).normalized());
+        addParticle(x , ny, 0 , Vector3f( 0.f, -1.f,  1.f).normalized());
+        addParticle(x , 0 , nz, Vector3f( 0.f,  1.f, -1.f).normalized());
+        addParticle(x , ny, nz, Vector3f( 0.f, -1.f, -1.f).normalized());
+    }
+    // Y borders
+    for (int y = 1; y < ny; ++y) {
+        addParticle(0 , y , 0 , Vector3f( 1.f,  0.f,  1.f).normalized());
+        addParticle(nx, y , 0 , Vector3f(-1.f,  0.f,  1.f).normalized());
+        addParticle(0 , y , nz, Vector3f( 1.f,  0.f, -1.f).normalized());
+        addParticle(nx, y , nz, Vector3f(-1.f,  0.f, -1.f).normalized());
+    }
+    // Z borders
+    for (int z = 1; z < nz; ++z) {
+        addParticle(0 , 0 , z , Vector3f( 1.f,  1.f,  0.f).normalized());
+        addParticle(nx, 0 , z , Vector3f(-1.f,  1.f,  0.f).normalized());
+        addParticle(0 , ny, z , Vector3f( 1.f, -1.f,  0.f).normalized());
+        addParticle(nx, ny, z , Vector3f(-1.f, -1.f,  0.f).normalized());
+    }
+    // Corners
+    for (int c = 0; c < 8; ++c) {
+        int x = (c     ) & 1;
+        int y = (c >> 1) & 1;
+        int z = (c >> 2) & 1;
+        addParticle(x ? 0 : nx, y ? 0 : ny, z ? 0 : nz, Vector3f(x ? 1.f : -1.f, y ? 1.f : -1.f, z ? 1.f : -1.f).normalized());
+    }
+
+
+    return Result({ std::move(positions), std::move(normals) });
+}
+
+ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Mesh &mesh, float particleRadius, int cells) {
+
+    float density = 1.f / (M_PI * sqr(particleRadius));
+    DBG("density = %f", density);
 
     DBG("Generating surface particles ...");
 
@@ -103,7 +178,13 @@ std::vector<Vector3f> ParticleGenerator::generateSurfaceParticles(const Mesh &me
         DBG("avg neighbours = %d", 2 * count / positions.size());
     }
 
-    return positions;
+    // Compute normals
+    std::vector<Vector3f> normals(positions.size());
+    for (size_t i = 0; i < positions.size(); ++i) {
+        normals[i] = sdf.gradient(sdf.toVoxelSpace(positions[i])).normalized();
+    }
+
+    return Result({ std::move(positions), std::move(normals) });
 }
 
 } // namespace pbs

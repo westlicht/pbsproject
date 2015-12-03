@@ -152,12 +152,12 @@ struct ParticlePainter {
 };
 
 // Painter for drawing particle spheres.
-struct SphereParticlePainter {
+struct ParticleSpherePainter {
     GLShader shader;
 
-    SphereParticlePainter() {
+    ParticleSpherePainter() {
         shader.init(
-            "ParticlePainter",
+            "ParticleSpherePainter",
             // Vertex shader
             "#version 330\n"
             "uniform mat4 mv;\n"
@@ -214,6 +214,61 @@ struct SphereParticlePainter {
         shader.setUniform("mv", mv);
         shader.setUniform("proj", proj);
         shader.setUniform("particleRadius", particleRadius);
+        shader.setUniform("color", color);
+        glEnable(GL_DEPTH_TEST);
+        shader.drawArray(GL_POINTS, 0, positions.cols());
+    }
+};
+
+// Painter for drawing particle normals.
+struct ParticleNormalPainter {
+    GLShader shader;
+
+    ParticleNormalPainter() {
+        shader.init(
+            "ParticleNormalPainter",
+            // Vertex shader
+            "#version 330\n"
+            "uniform mat4 mvp;\n"
+            "uniform float normalLength;\n"
+            "in vec3 position;\n"
+            "in vec3 normal;\n"
+            "out vec4 vPositionA;\n"
+            "out vec4 vPositionB;\n"
+            "void main() {\n"
+            "    vPositionA = mvp * vec4(position, 1.0);\n"
+            "    vPositionB = mvp * vec4(position + normalLength * normal, 1.0);\n"
+            "}",
+            // Fragment shader
+            "#version 330\n"
+            "uniform vec4 color;\n"
+            "out vec4 out_color;\n"
+            "void main() {\n"
+            "    out_color = color;\n"
+            "}",
+            // Geometry shader
+            "#version 330\n"
+            "layout (points) in;\n"
+            "layout (line_strip) out;\n"
+            "layout (max_vertices = 2) out;\n"
+            "in vec4 vPositionA[];\n"
+            "in vec4 vPositionB[];\n"
+            "void main() {\n"
+            "    gl_Position = vPositionA[0];\n"
+            "    EmitVertex();\n"
+            "    gl_Position = vPositionB[0];\n"
+            "    EmitVertex();\n"
+            "    EndPrimitive();\n"
+            "}"
+        );
+    }
+
+    void draw(const Matrix4f &mvp, const MatrixXf &positions, const MatrixXf &normals, const Color &color, float normalLength = 0.05f) {
+        shader.bind();
+        shader.uploadAttrib("position", positions);
+        shader.uploadAttrib("normal", normals);
+        shader.setUniform("mvp", mvp);
+        shader.setUniform("normalLength", normalLength);
         shader.setUniform("color", color);
         glEnable(GL_DEPTH_TEST);
         shader.drawArray(GL_POINTS, 0, positions.cols());

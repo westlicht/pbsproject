@@ -94,6 +94,8 @@ public:
             voxelizeMesh(mesh);
         }
 
+        addBoundaryParticles(ParticleGenerator::generateSurfaceParticles(_bounds, _particleRadius));
+
         //voxelizeBox(Box3f(Vector3f(0.25f), Vector3f(0.75f)));
         //voxelizeBox(Box3f(Vector3f(0.1f, 0.5f), Vector3f(0.9f, 0.9f)));
         //voxelizeBox(Box3f(Vector3f(0.3f, 0.5f), Vector3f(0.7f, 0.9f)));
@@ -379,8 +381,7 @@ public:
         if (sceneMesh.type == Scene::Liquid) {
             Voxelizer::voxelize(mesh, _particleDiameter, _positions);
         } else {
-            auto positions = ParticleGenerator::generateSurfaceParticles(mesh, 1000.f);
-            _blockerPositions.insert(_blockerPositions.end(), positions.begin(), positions.end());
+            addBoundaryParticles(ParticleGenerator::generateSurfaceParticles(mesh, _particleRadius));
         }
     }
 
@@ -410,17 +411,33 @@ public:
         return std::move(positions);
     }
 
-    // Returns particle positions in matrix form
-    MatrixXf blockerPositions() const {
+    // Returns boundary particle positions in matrix form
+    MatrixXf boundaryPositions() const {
         MatrixXf positions;
-        positions.resize(3, _blockerPositions.size());
-        for (size_t i = 0; i < _blockerPositions.size(); ++i) {
-            positions.col(i) = _blockerPositions[i];
+        positions.resize(3, _boundaryPositions.size());
+        for (size_t i = 0; i < _boundaryPositions.size(); ++i) {
+            positions.col(i) = _boundaryPositions[i];
         }
         return std::move(positions);
     }
 
+    // Returns boundary particle normals in matrix form
+    MatrixXf boundaryNormals() const {
+        MatrixXf normals;
+        normals.resize(3, _boundaryNormals.size());
+        for (size_t i = 0; i < _boundaryNormals.size(); ++i) {
+            normals.col(i) = _boundaryNormals[i];
+        }
+        return std::move(normals);
+    }
+
 private:
+    void addBoundaryParticles(const ParticleGenerator::Result &result) {
+        _boundaryPositions.insert(_boundaryPositions.end(), result.positions.begin(), result.positions.end());
+        _boundaryNormals.insert(_boundaryNormals.end(), result.normals.begin(), result.normals.end());
+    }
+
+
     float _particleRadius = 0.01f;
     float _particleRadius2;
     float _particleDiameter;
@@ -455,8 +472,9 @@ private:
     std::vector<float> _densities;
     std::vector<float> _pressures;
 
-    // Blocker particle buffers
-    std::vector<Vector3f> _blockerPositions;
+    // Boundary particle buffers
+    std::vector<Vector3f> _boundaryPositions;
+    std::vector<Vector3f> _boundaryNormals;
 
     float _t = 0.f;
 };

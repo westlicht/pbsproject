@@ -96,14 +96,14 @@ public:
                 case GLFW_KEY_SPACE:
                     _isRunning = !_isRunning;
                     break;
-                case GLFW_KEY_B:
-                    _showBounds = !_showBounds;
-                    break;
                 case GLFW_KEY_G:
                     _showGrid = !_showGrid;
                     break;
                 case GLFW_KEY_P:
                     _showParticles = !_showParticles;
+                    break;
+                case GLFW_KEY_B:
+                    _showBoundaryParticles = !_showBoundaryParticles;
                     break;
                 case GLFW_KEY_M:
                     _showMeshes = !_showMeshes;
@@ -184,14 +184,16 @@ public:
 
         if (_showGrid) {
             _gridPainter->draw(mvp);
-        }
-        if (_showBounds) {
             _boxPainter->draw(mvp, _sph->bounds());
         }
         if (_showParticles) {
             float particleRadius = _sph->parameters().particleRadius * 2.f;
             _particlePainter->draw(mv, proj, _sph->positions(), Color(0.5f, 0.5f, 1.f, 1.f), particleRadius);
-            _particlePainter->draw(mv, proj, _sph->blockerPositions(), Color(1.f, 0.5f, 0.5f, 1.f), particleRadius);
+        }
+        if (_showBoundaryParticles) {
+            float particleRadius = _sph->parameters().particleRadius * 2.f;
+            _particlePainter->draw(mv, proj, _sph->boundaryPositions(), Color(1.f, 0.5f, 0.5f, 1.f), particleRadius);
+            _particleNormalPainter->draw(mvp, _sph->boundaryPositions(), _sph->boundaryNormals(), Color(1.f, 1.f, 1.f, 1.f), particleRadius * 2.f);
         }
         if (_showMeshes) {
             _meshPainter->draw(mvp);
@@ -208,8 +210,8 @@ public:
 
     void refresh() {
         _showGridCheckBox->setChecked(_showGrid);
-        _showBoundsCheckBox->setChecked(_showBounds);
         _showParticlesCheckBox->setChecked(_showParticles);
+        _showBoundaryParticlesCheckBox->setChecked(_showBoundaryParticles);
         _showMeshesCheckBox->setChecked(_showMeshes);
         _showDebugCheckBox->setChecked(_showDebug);
     }
@@ -243,16 +245,17 @@ public:
         
         _gridPainter.reset(new pbs::GridPainter());
         _boxPainter.reset(new pbs::BoxPainter());
-        _particlePainter.reset(new pbs::SphereParticlePainter());
+        _particlePainter.reset(new pbs::ParticleSpherePainter());
+        _particleNormalPainter.reset(new pbs::ParticleNormalPainter());
         _meshPainter.reset(new pbs::MeshPainter());
 
         new Label(_window, "Display", "sans-bold");
-        _showGridCheckBox = new CheckBox(_window, "Show Grid (G)");
+        _showGridCheckBox = new CheckBox(_window, "Show Grid & Domain (G)");
         _showGridCheckBox->setCallback([&] (bool b) { _showGrid = b; refresh(); });
-        _showBoundsCheckBox = new CheckBox(_window, "Show Bounds (B)");
-        _showBoundsCheckBox->setCallback([&] (bool b) { _showBounds = b; refresh(); });
         _showParticlesCheckBox = new CheckBox(_window, "Show Particles (P)");
         _showParticlesCheckBox->setCallback([&] (bool b) { _showParticles = b; refresh(); });
+        _showBoundaryParticlesCheckBox = new CheckBox(_window, "Show Boundary Particles (B)");
+        _showBoundaryParticlesCheckBox->setCallback([&] (bool b) { _showBoundaryParticles = b; refresh(); });
         _showMeshesCheckBox = new CheckBox(_window, "Show Meshes (M)");
         _showMeshesCheckBox->setCallback([&] (bool b) { _showMeshes = b; refresh(); });
         _showDebugCheckBox = new CheckBox(_window, "Show Debug (D)");
@@ -339,16 +342,16 @@ private:
     ComboBox *_sceneComboBox;
 
     CheckBox *_showGridCheckBox;
-    CheckBox *_showBoundsCheckBox;
     CheckBox *_showParticlesCheckBox;
+    CheckBox *_showBoundaryParticlesCheckBox;
     CheckBox *_showMeshesCheckBox;
     CheckBox *_showDebugCheckBox;
 
     std::vector<std::string> _sceneNames;
 
     bool _showGrid = true;
-    bool _showBounds = true;
     bool _showParticles = true;
+    bool _showBoundaryParticles = false;
     bool _showMeshes = true;
     bool _showDebug = true;
     bool _anisotropicMesh = false;
@@ -364,7 +367,8 @@ private:
     Vector3f _viewOrigin = Vector3f(0.f, 0.f, 0.f);
     std::unique_ptr<pbs::GridPainter> _gridPainter;
     std::unique_ptr<pbs::BoxPainter> _boxPainter;
-    std::unique_ptr<pbs::SphereParticlePainter> _particlePainter;
+    std::unique_ptr<pbs::ParticleSpherePainter> _particlePainter;
+    std::unique_ptr<pbs::ParticleNormalPainter> _particleNormalPainter;
     std::unique_ptr<pbs::MeshPainter> _meshPainter;
 
     std::unique_ptr<pbs::SPH> _sph;
