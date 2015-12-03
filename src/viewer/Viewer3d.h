@@ -123,15 +123,14 @@ public:
         if (_isAnimation) {
             int steps = int((1.f / _animationFPS) / dt);
             for (int i = 0; i < steps; ++i) {
-                pbs::Timer timer;
                 _sph->update(dt);
             }
             if (_showMeshes) {
                 createMesh();
             }
         } else if (_isRunning) {
-            pbs::Timer timer;
             _sph->update(dt);
+            glfwPostEmptyEvent();
         }
 
         Matrix4f view, proj, model;
