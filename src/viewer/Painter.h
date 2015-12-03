@@ -186,34 +186,34 @@ struct SphereParticlePainter {
             "layout (triangle_strip) out;\n"
             "layout (max_vertices = 4) out;\n"
             "uniform mat4 proj;\n"
-            "uniform float particleSize;\n"
+            "uniform float particleRadius;\n"
             "in vec4 vPosition[];\n"
             "out vec2 gPosition;\n"
             "void main() {\n"
             "    vec4 p = vPosition[0];\n"
-            "    gPosition = vec2(-0.5, -0.5);\n"
-            "    gl_Position = proj * vec4(p.xy + gPosition * particleSize, p.zw);\n"
+            "    gPosition = vec2(-1.0, -1.0);\n"
+            "    gl_Position = proj * vec4(p.xy + gPosition * particleRadius, p.zw);\n"
             "    EmitVertex();\n"
-            "    gPosition = vec2(-0.5, 0.5);\n"
-            "    gl_Position = proj * vec4(p.xy + gPosition * particleSize, p.zw);\n"
+            "    gPosition = vec2(-1.0, 1.0);\n"
+            "    gl_Position = proj * vec4(p.xy + gPosition * particleRadius, p.zw);\n"
             "    EmitVertex();\n"
-            "    gPosition = vec2(0.5, -0.5);\n"
-            "    gl_Position = proj * vec4(p.xy + gPosition * particleSize, p.zw);\n"
+            "    gPosition = vec2(1.0, -1.0);\n"
+            "    gl_Position = proj * vec4(p.xy + gPosition * particleRadius, p.zw);\n"
             "    EmitVertex();\n"
-            "    gPosition = vec2(0.5, 0.5);\n"
-            "    gl_Position = proj * vec4(p.xy + gPosition * particleSize, p.zw);\n"
+            "    gPosition = vec2(1.0, 1.0);\n"
+            "    gl_Position = proj * vec4(p.xy + gPosition * particleRadius, p.zw);\n"
             "    EmitVertex();\n"
             "    EndPrimitive();\n"
             "}"
         );
     }
 
-    void draw(const Matrix4f &mv, const Matrix4f &proj, const MatrixXf &positions, const Color &color, float particleSize = 0.03f) {
+    void draw(const Matrix4f &mv, const Matrix4f &proj, const MatrixXf &positions, const Color &color, float particleRadius = 0.03f) {
         shader.bind();
         shader.uploadAttrib("position", positions);
         shader.setUniform("mv", mv);
         shader.setUniform("proj", proj);
-        shader.setUniform("particleSize", particleSize);
+        shader.setUniform("particleRadius", particleRadius);
         shader.setUniform("color", color);
         glEnable(GL_DEPTH_TEST);
         shader.drawArray(GL_POINTS, 0, positions.cols());

@@ -189,8 +189,9 @@ public:
             _boxPainter->draw(mvp, _sph->bounds());
         }
         if (_showParticles) {
-            _particlePainter->draw(mv, proj, _sph->positions(), Color(0.5f, 0.5f, 1.f, 1.f));
-            _particlePainter->draw(mv, proj, _sph->blockerPositions(), Color(1.f, 0.5f, 0.5f, 1.f));
+            float particleRadius = _sph->parameters().particleRadius * 2.f;
+            _particlePainter->draw(mv, proj, _sph->positions(), Color(0.5f, 0.5f, 1.f, 1.f), particleRadius);
+            _particlePainter->draw(mv, proj, _sph->blockerPositions(), Color(1.f, 0.5f, 0.5f, 1.f), particleRadius);
         }
         if (_showMeshes) {
             _meshPainter->draw(mvp);
