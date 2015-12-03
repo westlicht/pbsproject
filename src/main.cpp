@@ -39,8 +39,8 @@ int main(int argc, char *argv[]) {
 
     nanogui::init();
 
-    int mode = 0;
-    if (run3d) mode = 1;
+    int mode = 1;
+    if (run2d) mode = 0;
 
     switch (mode) {
     case 0: { // 2d mode
