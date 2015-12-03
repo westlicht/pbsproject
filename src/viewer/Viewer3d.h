@@ -33,8 +33,6 @@ public:
     Viewer3d() : Screen(Vector2i(1200, 800), "PBS Project") {
         _sceneNames = findScenes(SCENES_DIR);
         _sph.reset(new pbs::SPH(pbs::Scene()));
-        _startTime = std::chrono::high_resolution_clock::now();
-        _lastTime = 0;
         _viewOrigin = _sph->bounds().center();        
         initializeGUI();
     }
@@ -327,7 +325,4 @@ private:
     std::unique_ptr<pbs::MeshPainter> _meshPainter;
 
     std::unique_ptr<pbs::SPH> _sph;
-
-    std::chrono::high_resolution_clock::time_point _startTime;
-    double _lastTime;
 };
