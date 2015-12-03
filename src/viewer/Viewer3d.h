@@ -171,11 +171,6 @@ public:
     }
 
     void refresh() {
-        _stiffnessSlider->setValue(pbs::rangeToUnit(_sph->settings().stiffness, 0.5f, 10.f));
-        _stiffnessTextBox->setValue(tfm::format("%.1f", _sph->settings().stiffness));
-        _viscositySlider->setValue(pbs::rangeToUnit(_sph->settings().viscosity, 0.5f, 100.f));
-        _viscosityTextBox->setValue(tfm::format("%.1f", _sph->settings().viscosity));
-
         _showGridCheckBox->setChecked(_showGrid);
         _showBoundsCheckBox->setChecked(_showBounds);
         _showParticlesCheckBox->setChecked(_showParticles);
@@ -183,8 +178,6 @@ public:
     }
 
     void initializeGUI() {
-        Widget *panel;
-
         _window = new Window(this, "Settings");
         _window->setPosition(Vector2i(15, 15));
         _window->setLayout(new GroupLayout());
@@ -202,24 +195,6 @@ public:
             loadScene(filesystem::path(SCENES_DIR) / *it);
             _sceneComboBox->setSelectedIndex(std::distance(_sceneNames.begin(), it));
         }
-
-        new Label(_window, "Stiffness", "sans-bold");
-        panel = new Widget(_window);
-        panel->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 20));
-        _stiffnessSlider = new Slider(panel);
-        _stiffnessSlider->setFixedWidth(100);
-        _stiffnessSlider->setCallback([&] (float f) { _sph->settings().stiffness = pbs::unitToRange(f, 0.5f, 10.f); refresh(); });
-        _stiffnessTextBox = new TextBox(panel);
-        _stiffnessTextBox->setFixedSize(Vector2i(80, 25));
-
-        new Label(_window, "Viscosity", "sans-bold");
-        panel = new Widget(_window);
-        panel->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 20));
-        _viscositySlider = new Slider(panel);
-        _viscositySlider->setFixedWidth(100);
-        _viscositySlider->setCallback([&] (float f) { _sph->settings().viscosity = pbs::unitToRange(f, 0.5f, 100.f); refresh(); });
-        _viscosityTextBox = new TextBox(panel);
-        _viscosityTextBox->setFixedSize(Vector2i(80, 25));
 
         new Label(_window, "Actions", "sans-bold");
         Button *createMeshButton = new Button(_window, "Create Mesh");
@@ -323,10 +298,6 @@ private:
 
     Window *_window;
     ComboBox *_sceneComboBox;
-    Slider *_stiffnessSlider;
-    TextBox *_stiffnessTextBox;
-    Slider *_viscositySlider;
-    TextBox *_viscosityTextBox;
 
     CheckBox *_showGridCheckBox;
     CheckBox *_showBoundsCheckBox;
