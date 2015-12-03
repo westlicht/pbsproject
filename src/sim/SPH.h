@@ -29,55 +29,55 @@ namespace pbs {
 
 class SPH {
 public:
-    // Simulation settings
-    struct Settings {
-        // Stiffness constant
-        float stiffness = 3.f;
-        // Viscosity
-        float viscosity = 1.f;
-        // Gravity force
-        Vector3f gravity = Vector3f(0.f, -9.81f, 0.f);
-    };
-
     // Simulation parameters
     struct Parameters {
-        int supportParticles;
-        int particlesPerUnitVolume;
-        float restDensity;
-        float restSpacing;
+        float particleRadius;
+        float particleDiameter;
+        float kernelRadius;
+        int kernelSupportParticles;
         float particleMass;
-        float h;
+        float restDensity;
     };
 
     SPH(const Scene &scene) {
-        _supportParticles = scene.settings.getInteger("supportParticles", _supportParticles);
-        _particlesPerUnitVolume = scene.settings.getInteger("particlesPerUnitVolume", _particlesPerUnitVolume);
+        _particleRadius = scene.settings.getFloat("particleRadius", _particleRadius);
+        _particleRadius2 = sqr(_particleRadius2);
+        _particleDiameter = 2.f * _particleRadius;
+
+        _kernelRadius = 4.f * _particleRadius;
+        _kernelRadius2 = sqr(_kernelRadius);
+        _kernelSupportParticles = int(std::ceil((4.f / 3.f * M_PI * cube(_kernelRadius)) / cube(_particleDiameter)));
+
+        //_supportParticles = scene.settings.getInteger("supportParticles", _supportParticles);
+        //_particlesPerUnitVolume = scene.settings.getInteger("particlesPerUnitVolume", _particlesPerUnitVolume);
         _restDensity = scene.settings.getFloat("restDensity", _restDensity);
 
-        _restSpacing = 1.f / std::pow(_particlesPerUnitVolume, 1.f / 3.f);
-        _particleMass = _restDensity / _particlesPerUnitVolume;
+        //_restSpacing = 1.f / std::pow(_particlesPerUnitVolume, 1.f / 3.f);
+        //_particleMass = _restDensity / _particlesPerUnitVolume;
+        _particleMass = _restDensity / cube(1.f / _particleDiameter);
         _particleMass2 = sqr(_particleMass);
         //_h = std::pow((3.f * _supportParticles) / (4.f * M_PI * _particlesPerUnitVolume), 1.f / 3.f);
-        _h = _restSpacing * 2.f;
-        _h2 = sqr(_h);
+        //_h = _restSpacing * 2.f;
+        //_kernelRadius2 = sqr(_h);
+
+        _gravity = scene.settings.getVector3("gravity", _gravity);
 
         wcsph.B = _restDensity * sqr(wcsph.cs) / wcsph.gamma;
-        wcsph.dt = std::min(0.25f * _h / (_particleMass * 9.81f), 0.4f * _h / (wcsph.cs * (1.f + 0.6f * wcsph.viscosity)));
+        wcsph.dt = std::min(0.25f * _kernelRadius / (_particleMass * 9.81f), 0.4f * _kernelRadius / (wcsph.cs * (1.f + 0.6f * wcsph.viscosity)));
 
         _maxTimestep = 1e-3f;
 
         _bounds = scene.world.bounds;
-        _kernel.init(_h);
-        _grid.init(_bounds, _h);
+        _kernel.init(_kernelRadius);
+        _grid.init(_bounds, _kernelRadius);
 
-        DBG("supportParticles = %d", _supportParticles);
-        DBG("particlesPerUnitVolume = %d", _particlesPerUnitVolume);
+        DBG("particleRadius = %f", _particleRadius);
+        DBG("kernelRadius = %f", _kernelRadius);
+        DBG("kernelSupportParticles = %d", _kernelSupportParticles);
         DBG("restDensity = %f", _restDensity);
-        DBG("settings.stiffness = %f", _settings.stiffness);
-        DBG("settings.viscosity = %f", _settings.viscosity);
-        DBG("restSpacing = %f", _restSpacing);
         DBG("particleMass = %f", _particleMass);
-        DBG("h = %f", _h);
+        DBG("gravity = %s", _gravity);
+
         DBG("wcsph.gamma = %f", wcsph.gamma);
         DBG("wcsph.cs = %f", wcsph.cs);
         DBG("wcsph.B = %f", wcsph.B);
@@ -109,9 +109,6 @@ public:
         _pressures.resize(_positions.size());
     }
 
-    const Settings &settings() const { return _settings; }
-          Settings &settings()       { return _settings; }
-
     // iterate i=0..count-1 calling func(i)
     template<typename Func>
     void iterate(size_t count, Func func) {
@@ -125,10 +122,10 @@ public:
     // iterate over all neighbours around p, calling func(j, r, r2)
     template<typename Func>
     void iterateNeighbours(const Grid &grid, const std::vector<Vector3f> &positions, const Vector3f &p, Func func) {
-        grid.lookup(p, _h, [&] (size_t j) {
+        grid.lookup(p, _kernelRadius, [&] (size_t j) {
             Vector3f r = p - positions[j];
             float r2 = r.squaredNorm();
-            if (r2 < _h2) {
+            if (r2 < _kernelRadius2) {
                 func(j, r, r2);
             }
         });
@@ -158,7 +155,7 @@ public:
             iterateNeighbours(_grid, _positions, _positions[i], [this, &normal] (size_t j, const Vector3f &r, float r2) {
                 normal += _kernel.poly6Grad(r, r2) / _densities[j];
             });
-            normal *= _h * _particleMass * _kernel.poly6GradConstant;
+            normal *= _kernelRadius * _particleMass * _kernel.poly6GradConstant;
             _normals[i] = normal;
         });
     }
@@ -170,7 +167,7 @@ public:
             Vector3f forceCohesion;
             Vector3f forceCurvature;
 
-            _grid.lookup(_positions[i], _h, [this, i, &force, &forceCohesion, &forceCurvature, &forceViscosity] (size_t j) {
+            _grid.lookup(_positions[i], _kernelRadius, [this, i, &force, &forceCohesion, &forceCurvature, &forceViscosity] (size_t j) {
                 const Vector3f &v_i = _velocities[i];
                 const Vector3f &v_j = _velocities[j];
                 const Vector3f &n_i = _normals[i];
@@ -183,7 +180,7 @@ public:
                 if (i != j) {
                     Vector3f r = _positions[i] - _positions[j];
                     float r2 = r.squaredNorm();
-                    if (r2 < _h2 && r2 > 0.00001f) {
+                    if (r2 < _kernelRadius2 && r2 > 0.00001f) {
                         float rn = std::sqrt(r2);
                         //force -= 0.5f * (pressure_i + pressure_j) * _m / density_j * Kernel::spikyGrad(r);
                         //force -= _particleMass2 * (pressure_i + pressure_j) / (2.f * density_i * density_j) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
@@ -200,8 +197,8 @@ public:
                         // Viscosity force (WCSPH)
                         Vector3f v = (v_i - v_j);
                         if (v.dot(r) < 0.f) {
-                            float vu = 2.f * wcsph.viscosity * _h * wcsph.cs / (density_i + density_j);
-                            force += vu * _particleMass2 * (v.dot(r) / (r2 + 0.001f * sqr(_h))) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
+                            float vu = 2.f * wcsph.viscosity * _kernelRadius * wcsph.cs / (density_i + density_j);
+                            force += vu * _particleMass2 * (v.dot(r) / (r2 + 0.001f * sqr(_kernelRadius))) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
                         }
                         #endif
 
@@ -219,7 +216,7 @@ public:
 
                         // Surface tension (according to [3])
                         float correctionFactor = 2.f * _restDensity / (density_i + density_j);
-                        forceCohesion += correctionFactor * r * _kernel.surfaceTension(rn);
+                        forceCohesion += correctionFactor * (r / rn) * _kernel.surfaceTension(rn);
                         forceCurvature += correctionFactor * (n_i - n_j);
                     } else if (r2 == 0.f) {
                         // Avoid collapsing particles
@@ -228,15 +225,15 @@ public:
                 }
             });
 
-            const float viscosity = 0.0001f;
+            const float viscosity = 0.0005f;
             forceViscosity *= viscosity * _particleMass * _kernel.viscosityLaplaceConstant;
 
-            const float surfaceTension = 1.f;
-            forceCohesion *= surfaceTension * _particleMass2 * _kernel.surfaceTensionConstant;
-            forceCurvature *= surfaceTension * _particleMass;
+            const float surfaceTension = 2.f;
+            forceCohesion *= -surfaceTension * _particleMass2 * _kernel.surfaceTensionConstant;
+            forceCurvature *= -surfaceTension * _particleMass;
 
             force += forceCohesion + forceCurvature + forceViscosity;
-            force += _particleMass * _settings.gravity;
+            force += _particleMass * _gravity;
 
             _forces[i] = force;
         });
@@ -269,22 +266,20 @@ public:
     void update(float dt) {
         _t += dt;
 
-        DBG("update: dt = %f", dt);
-
         Vector3f gd;
         float t = std::fmod(_t * 0.5f, 4.f);
         if (t < 1.f) {
-            _settings.gravity = Vector3f(0.f, -9.81f, 0.f);
+            _gravity = Vector3f(0.f, -9.81f, 0.f);
         } else if (t < 2.f) {
-            _settings.gravity = Vector3f(9.81f, 0.f, 0.f);
+            _gravity = Vector3f(9.81f, 0.f, 0.f);
         } else if (t < 3.f) {
-            _settings.gravity = Vector3f(0.f, 9.81f, 0.f);
+            _gravity = Vector3f(0.f, 9.81f, 0.f);
         } else {
-            _settings.gravity = Vector3f(-9.81f, 0.f, 0.f);
+            _gravity = Vector3f(-9.81f, 0.f, 0.f);
         }
 
-        //_settings.gravity = Vector3f(0.f);
-        _settings.gravity = Vector3f(0.f, -9.81f, 0.f);
+        //_gravity = Vector3f(0.f);
+        _gravity = Vector3f(0.f, -9.81f, 0.f);
 
         {
             ProfileScope profile("Grid Update");
@@ -330,25 +325,25 @@ public:
             });
         }
 
-        Profiler::dump();
+        //Profiler::dump();
     }
 
 
     void voxelizeBox(const Box3f &box) {
         Vector3i min(
-            int(std::ceil(box.min.x() / _restSpacing)),
-            int(std::ceil(box.min.y() / _restSpacing)),
-            int(std::ceil(box.min.z() / _restSpacing))
+            int(std::ceil(box.min.x() / _particleDiameter)),
+            int(std::ceil(box.min.y() / _particleDiameter)),
+            int(std::ceil(box.min.z() / _particleDiameter))
         );
         Vector3i max(
-            int(std::floor(box.max.x() / _restSpacing)),
-            int(std::floor(box.max.y() / _restSpacing)),
-            int(std::floor(box.max.z() / _restSpacing))
+            int(std::floor(box.max.x() / _particleDiameter)),
+            int(std::floor(box.max.y() / _particleDiameter)),
+            int(std::floor(box.max.z() / _particleDiameter))
         );
         for (int z = min.z(); z <= max.z(); ++z) {
             for (int y = min.y(); y <= max.y(); ++y) {
                 for (int x = min.x(); x <= max.x(); ++x) {
-                    Vector3f p(x * _restSpacing, y * _restSpacing, z * _restSpacing);
+                    Vector3f p(x * _particleDiameter, y * _particleDiameter, z * _particleDiameter);
                     _positions.emplace_back(p);
                 }
             }
@@ -357,20 +352,20 @@ public:
 
     void voxelizeSphere(const Vector3f &pos, float radius) {
         Vector3i min(
-            int(std::ceil((pos.x() - radius) / _restSpacing)),
-            int(std::ceil((pos.y() - radius) / _restSpacing)),
-            int(std::ceil((pos.z() - radius) / _restSpacing))
+            int(std::ceil((pos.x() - radius) / _particleDiameter)),
+            int(std::ceil((pos.y() - radius) / _particleDiameter)),
+            int(std::ceil((pos.z() - radius) / _particleDiameter))
         );
         Vector3i max(
-            int(std::floor((pos.x() + radius) / _restSpacing)),
-            int(std::floor((pos.y() + radius) / _restSpacing)),
-            int(std::floor((pos.z() + radius) / _restSpacing))
+            int(std::floor((pos.x() + radius) / _particleDiameter)),
+            int(std::floor((pos.y() + radius) / _particleDiameter)),
+            int(std::floor((pos.z() + radius) / _particleDiameter))
         );
         float r2 = sqr(radius);
         for (int z = min.z(); z <= max.z(); ++z) {
             for (int y = min.y(); y <= max.y(); ++y) {
                 for (int x = min.x(); x <= max.x(); ++x) {
-                    Vector3f p(x * _restSpacing, y * _restSpacing, z * _restSpacing);
+                    Vector3f p(x * _particleDiameter, y * _particleDiameter, z * _particleDiameter);
                     if ((p - pos).squaredNorm() <= r2) {
                         _positions.emplace_back(p);
                     }
@@ -382,7 +377,7 @@ public:
     void voxelizeMesh(const Scene::Mesh &sceneMesh) {
         Mesh mesh = ObjReader::load(sceneMesh.filename);
         if (sceneMesh.type == Scene::Liquid) {
-            Voxelizer::voxelize(mesh, _restSpacing, _positions);
+            Voxelizer::voxelize(mesh, _particleDiameter, _positions);
         } else {
             auto positions = ParticleGenerator::generateSurfaceParticles(mesh, 1000.f);
             _blockerPositions.insert(_blockerPositions.end(), positions.begin(), positions.end());
@@ -394,12 +389,12 @@ public:
     // Returns a set of simulation parameters
     Parameters parameters() const {
         Parameters params;
-        params.supportParticles = _supportParticles;
-        params.particlesPerUnitVolume = _particlesPerUnitVolume;
-        params.restDensity = _restDensity;
-        params.restSpacing = _restSpacing;
+        params.particleRadius = _particleRadius;
+        params.particleDiameter = _particleDiameter;
+        params.kernelRadius = _kernelRadius;
+        params.kernelSupportParticles = _kernelSupportParticles;
         params.particleMass = _particleMass;
-        params.h = _h;
+        params.restDensity = _restDensity;
         return params;
     }
 
@@ -426,17 +421,18 @@ public:
     }
 
 private:
-    int _supportParticles = 50;             ///< Number of particles expected to be within smoothing kernel support
-    int _particlesPerUnitVolume = 1000000;  ///< Number of particles per unit volume
+    float _particleRadius = 0.01f;
+    float _particleRadius2;
+    float _particleDiameter;
+    float _kernelRadius;
+    float _kernelRadius2;
+    int _kernelSupportParticles;
     float _restDensity = 1000.f;            ///< Rest density in kg/m^3
-
-    float _restSpacing;                     ///< Particle grid spacing on initialization
     float _particleMass;                    ///< Particle mass
     float _particleMass2;                   ///< Squared particle mass
-    float _h;                               ///< SPH smoothing radius
-    float _h2;                              ///< Squared SPH smooting radius
-
     float _maxTimestep;                     ///< Maximum allowed timestep
+
+    Vector3f _gravity = Vector3f(0.f, -9.81f, 0.f);
 
     struct {
         const float gamma = 7.f;
@@ -445,8 +441,6 @@ private:
         float viscosity = 0.005f;
         float dt;
     } wcsph;
-
-    Settings _settings;
 
     Kernel _kernel;
 

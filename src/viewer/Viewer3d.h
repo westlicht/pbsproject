@@ -237,12 +237,12 @@ public:
 private:
     void createMesh() {
         pbs::ParticleMesher::Parameters params;
-        params.supportParticles = _sph->parameters().supportParticles;
-        params.particlesPerUnitVolume = _sph->parameters().particlesPerUnitVolume;
-        params.restDensity = _sph->parameters().restDensity;
-        params.restSpacing = _sph->parameters().restSpacing;
+        params.particleRadius = _sph->parameters().particleRadius;
+        params.particleDiameter = _sph->parameters().particleDiameter;
+        params.kernelRadius = _sph->parameters().kernelRadius;
+        params.kernelSupportParticles = _sph->parameters().kernelSupportParticles;
         params.particleMass = _sph->parameters().particleMass;
-        params.h = _sph->parameters().h;
+        params.restDensity = _sph->parameters().restDensity;
         params.isoLevel = 0.2f;
 
         pbs::MatrixXf positions = _sph->positions();

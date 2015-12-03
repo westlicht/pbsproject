@@ -10,12 +10,12 @@ class Mesh;
 class ParticleMesher {
 public:
     struct Parameters {
-        int supportParticles;
-        int particlesPerUnitVolume;
-        float restDensity;
-        float restSpacing;
+        float particleRadius;
+        float particleDiameter;
+        float kernelRadius;
+        int kernelSupportParticles;
         float particleMass;
-        float h;
+        float restDensity;
         float isoLevel = 0.5f;
     };
 
