@@ -12,7 +12,7 @@
 
 namespace pbs {
 
-ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Box3f &box, float particleRadius) {
+ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Box3f &box, float particleRadius, bool flipNormals) {
     Vector3f origin = box.min;
     Vector3f extents = box.extents();
 
@@ -21,7 +21,7 @@ ParticleGenerator::Result ParticleGenerator::generateSurfaceParticles(const Box3
     int nz = std::ceil(extents.z() / (2.f * particleRadius));
     Vector3f d = extents.cwiseQuotient(Vector3f(nx, ny, nz));
 
-    float normalScale = -1.f;
+    float normalScale = flipNormals ? 1.f : -1.f;
 
     std::vector<Vector3f> positions;
     std::vector<Vector3f> normals;

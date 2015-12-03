@@ -17,7 +17,7 @@ public:
     };
 
     // Generates a uniform particle distribution on the surface of a box.
-    static Result generateSurfaceParticles(const Box3f &box, float particleRadius);
+    static Result generateSurfaceParticles(const Box3f &box, float particleRadius, bool flipNormals = false);
 
     // Generates a uniform particle distribution on the surface of a mesh.
     static Result generateSurfaceParticles(const Mesh &mesh, float particleRadius, int cells = 100);
