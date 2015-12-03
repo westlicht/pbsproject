@@ -188,7 +188,7 @@ public:
         }
         if (_showParticles) {
             float particleRadius = _sph->parameters().particleRadius * 2.f;
-            _particlePainter->draw(mv, proj, _sph->positions(), Color(0.5f, 0.5f, 1.f, 1.f), particleRadius);
+            _particlePainter->draw(mv, proj, _sph->fluidPositions(), Color(0.5f, 0.5f, 1.f, 1.f), particleRadius);
         }
         if (_showBoundaryParticles) {
             float particleRadius = _sph->parameters().particleRadius * 2.f;
@@ -289,7 +289,7 @@ private:
         params.restDensity = _sph->parameters().restDensity;
         params.isoLevel = 0.2f;
 
-        pbs::MatrixXf positions = _sph->positions();
+        pbs::MatrixXf positions = _sph->fluidPositions();
         pbs::Box3f bounds = _sph->bounds().expanded(_sph->bounds().extents() * 0.05f); // expand bounds by 5% of diagonal
         pbs::Vector3i cells(256);
 
@@ -297,7 +297,6 @@ private:
             pbs::ParticleMesher::createMeshAnisotropic(positions, bounds, cells, params) :
             pbs::ParticleMesher::createMeshIsotropic(positions, bounds, cells, params);
 
-        //pbs::ObjWriter::save(mesh, "mc.obj");
         _meshPainter->setMesh(mesh);
     }
 

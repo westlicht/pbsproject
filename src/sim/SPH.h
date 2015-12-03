@@ -69,7 +69,7 @@ public:
 
         _bounds = scene.world.bounds;
         _kernel.init(_kernelRadius);
-        _grid.init(_bounds, _kernelRadius);
+        _fluidGrid.init(_bounds, _kernelRadius);
 
         DBG("particleRadius = %f", _particleRadius);
         DBG("kernelRadius = %f", _kernelRadius);
@@ -94,21 +94,16 @@ public:
             voxelizeMesh(mesh);
         }
 
-        addBoundaryParticles(ParticleGenerator::generateSurfaceParticles(_bounds, _particleRadius));
+        addBoundaryParticles(ParticleGenerator::generateSurfaceParticles(_bounds, _particleRadius, true));
 
-        //voxelizeBox(Box3f(Vector3f(0.25f), Vector3f(0.75f)));
-        //voxelizeBox(Box3f(Vector3f(0.1f, 0.5f), Vector3f(0.9f, 0.9f)));
-        //voxelizeBox(Box3f(Vector3f(0.3f, 0.5f), Vector3f(0.7f, 0.9f)));
-        //voxelizeBox(Box3f(Vector3f(0.4f), Vector3f(0.6f)));
+        DBG("# particles = %d", _fluidPositions.size());
+        DBG("# boundary particles = %d", _boundaryPositions.size());
 
-
-        DBG("simulating %d particles ...", _positions.size());
-
-        _velocities.resize(_positions.size());
-        _normals.resize(_positions.size());
-        _forces.resize(_positions.size());
-        _densities.resize(_positions.size());
-        _pressures.resize(_positions.size());
+        _fluidVelocities.resize(_fluidPositions.size());
+        _fluidNormals.resize(_fluidPositions.size());
+        _fluidForces.resize(_fluidPositions.size());
+        _fluidDensities.resize(_fluidPositions.size());
+        _fluidPressures.resize(_fluidPositions.size());
     }
 
     // iterate i=0..count-1 calling func(i)
@@ -134,9 +129,9 @@ public:
     }
 
     void computeDensity() {
-        iterate(_positions.size(), [this] (size_t i) {
+        iterate(_fluidPositions.size(), [this] (size_t i) {
             float density = 0.f;
-            iterateNeighbours(_grid, _positions, _positions[i], [this, &density] (size_t j, const Vector3f &r, float r2) {
+            iterateNeighbours(_fluidGrid, _fluidPositions, _fluidPositions[i], [this, &density] (size_t j, const Vector3f &r, float r2) {
                 density += _kernel.poly6(r2);
             });
             density *= _particleMass * _kernel.poly6Constant;
@@ -145,42 +140,42 @@ public:
             float t = density / _restDensity;
             float pressure = wcsph.B * ((t*t)*(t*t)*(t*t)*t - 1.f);
 
-            _densities[i] = density;
-            _pressures[i] = pressure;
+            _fluidDensities[i] = density;
+            _fluidPressures[i] = pressure;
         });
     }
 
     // Compute normals based on [3]
     void computeNormals() {
-        iterate(_positions.size(), [this] (size_t i) {
+        iterate(_fluidPositions.size(), [this] (size_t i) {
             Vector3f normal;
-            iterateNeighbours(_grid, _positions, _positions[i], [this, &normal] (size_t j, const Vector3f &r, float r2) {
-                normal += _kernel.poly6Grad(r, r2) / _densities[j];
+            iterateNeighbours(_fluidGrid, _fluidPositions, _fluidPositions[i], [this, &normal] (size_t j, const Vector3f &r, float r2) {
+                normal += _kernel.poly6Grad(r, r2) / _fluidDensities[j];
             });
             normal *= _kernelRadius * _particleMass * _kernel.poly6GradConstant;
-            _normals[i] = normal;
+            _fluidNormals[i] = normal;
         });
     }
 
     void computeForces() {
-        iterate(_positions.size(), [this] (size_t i) {
+        iterate(_fluidPositions.size(), [this] (size_t i) {
             Vector3f force(0.f);
             Vector3f forceViscosity;
             Vector3f forceCohesion;
             Vector3f forceCurvature;
 
-            _grid.lookup(_positions[i], _kernelRadius, [this, i, &force, &forceCohesion, &forceCurvature, &forceViscosity] (size_t j) {
-                const Vector3f &v_i = _velocities[i];
-                const Vector3f &v_j = _velocities[j];
-                const Vector3f &n_i = _normals[i];
-                const Vector3f &n_j = _normals[j];
-                const float &density_i = _densities[i];
-                const float &density_j = _densities[j];
-                const float &pressure_i = _pressures[i];
-                const float &pressure_j = _pressures[j];
+            _fluidGrid.lookup(_fluidPositions[i], _kernelRadius, [this, i, &force, &forceCohesion, &forceCurvature, &forceViscosity] (size_t j) {
+                const Vector3f &v_i = _fluidVelocities[i];
+                const Vector3f &v_j = _fluidVelocities[j];
+                const Vector3f &n_i = _fluidNormals[i];
+                const Vector3f &n_j = _fluidNormals[j];
+                const float &density_i = _fluidDensities[i];
+                const float &density_j = _fluidDensities[j];
+                const float &pressure_i = _fluidPressures[i];
+                const float &pressure_j = _fluidPressures[j];
 
                 if (i != j) {
-                    Vector3f r = _positions[i] - _positions[j];
+                    Vector3f r = _fluidPositions[i] - _fluidPositions[j];
                     float r2 = r.squaredNorm();
                     if (r2 < _kernelRadius2 && r2 > 0.00001f) {
                         float rn = std::sqrt(r2);
@@ -222,7 +217,7 @@ public:
                         forceCurvature += correctionFactor * (n_i - n_j);
                     } else if (r2 == 0.f) {
                         // Avoid collapsing particles
-                        _positions[j] += Vector3f(1e-5f);
+                        _fluidPositions[j] += Vector3f(1e-5f);
                     }
                 }
             });
@@ -237,13 +232,13 @@ public:
             force += forceCohesion + forceCurvature + forceViscosity;
             force += _particleMass * _gravity;
 
-            _forces[i] = force;
+            _fluidForces[i] = force;
         });
     }
 
     void computeCollisions(std::function<void(size_t i, const Vector3f &n, float d)> handler) {
-        for (size_t i = 0; i < _positions.size(); ++i) {
-            const auto &p = _positions[i];
+        for (size_t i = 0; i < _fluidPositions.size(); ++i) {
+            const auto &p = _fluidPositions[i];
             if (p.x() < _bounds.min.x()) {
                 handler(i, Vector3f(1.f, 0.f, 0.f), _bounds.min.x() - p.x());
             }
@@ -268,26 +263,11 @@ public:
     void update(float dt) {
         _t += dt;
 
-        Vector3f gd;
-        float t = std::fmod(_t * 0.5f, 4.f);
-        if (t < 1.f) {
-            _gravity = Vector3f(0.f, -9.81f, 0.f);
-        } else if (t < 2.f) {
-            _gravity = Vector3f(9.81f, 0.f, 0.f);
-        } else if (t < 3.f) {
-            _gravity = Vector3f(0.f, 9.81f, 0.f);
-        } else {
-            _gravity = Vector3f(-9.81f, 0.f, 0.f);
-        }
-
-        //_gravity = Vector3f(0.f);
-        _gravity = Vector3f(0.f, -9.81f, 0.f);
-
         {
             ProfileScope profile("Grid Update");
-            _grid.update(_positions, [this] (size_t i, size_t j) {
-                std::swap(_positions[i], _positions[j]);
-                std::swap(_velocities[i], _velocities[j]);
+            _fluidGrid.update(_fluidPositions, [this] (size_t i, size_t j) {
+                std::swap(_fluidPositions[i], _fluidPositions[j]);
+                std::swap(_fluidVelocities[i], _fluidVelocities[j]);
             });
         }
 
@@ -309,10 +289,10 @@ public:
         {
             ProfileScope profile("Integrate");
             float invM = 1.f / _particleMass;
-            iterate(_positions.size(), [this, invM, dt] (size_t i) {
-                Vector3f a = _forces[i] * invM;
-                _velocities[i] += a * dt;
-                _positions[i] += _velocities[i] * dt;
+            iterate(_fluidPositions.size(), [this, invM, dt] (size_t i) {
+                Vector3f a = _fluidForces[i] * invM;
+                _fluidVelocities[i] += a * dt;
+                _fluidPositions[i] += _fluidVelocities[i] * dt;
             });
         }
 
@@ -322,8 +302,8 @@ public:
             // Collision handling
             computeCollisions([this] (size_t i, const Vector3f &n, float d) {
                 float c = 0.5f;
-                _positions[i] += n * d;
-                _velocities[i] -= (1 + c) * _velocities[i].dot(n) * n;
+                _fluidPositions[i] += n * d;
+                _fluidVelocities[i] -= (1 + c) * _fluidVelocities[i].dot(n) * n;
             });
         }
 
@@ -346,7 +326,7 @@ public:
             for (int y = min.y(); y <= max.y(); ++y) {
                 for (int x = min.x(); x <= max.x(); ++x) {
                     Vector3f p(x * _particleDiameter, y * _particleDiameter, z * _particleDiameter);
-                    _positions.emplace_back(p);
+                    _fluidPositions.emplace_back(p);
                 }
             }
         }
@@ -369,7 +349,7 @@ public:
                 for (int x = min.x(); x <= max.x(); ++x) {
                     Vector3f p(x * _particleDiameter, y * _particleDiameter, z * _particleDiameter);
                     if ((p - pos).squaredNorm() <= r2) {
-                        _positions.emplace_back(p);
+                        _fluidPositions.emplace_back(p);
                     }
                 }
             }
@@ -379,7 +359,7 @@ public:
     void voxelizeMesh(const Scene::Mesh &sceneMesh) {
         Mesh mesh = ObjReader::load(sceneMesh.filename);
         if (sceneMesh.type == Scene::Liquid) {
-            Voxelizer::voxelize(mesh, _particleDiameter, _positions);
+            Voxelizer::voxelize(mesh, _particleDiameter, _fluidPositions);
         } else {
             addBoundaryParticles(ParticleGenerator::generateSurfaceParticles(mesh, _particleRadius));
         }
@@ -401,12 +381,12 @@ public:
 
     float maxTimestep() const { return _maxTimestep; }
 
-    // Returns particle positions in matrix form
-    MatrixXf positions() const {
+    // Returns fluid particle positions in matrix form
+    MatrixXf fluidPositions() const {
         MatrixXf positions;
-        positions.resize(3, _positions.size());
-        for (size_t i = 0; i < _positions.size(); ++i) {
-            positions.col(i) = _positions[i];
+        positions.resize(3, _fluidPositions.size());
+        for (size_t i = 0; i < _fluidPositions.size(); ++i) {
+            positions.col(i) = _fluidPositions[i];
         }
         return std::move(positions);
     }
@@ -462,19 +442,20 @@ private:
     Kernel _kernel;
 
     Box3f _bounds;
-    Grid _grid;
 
     // Fluid particle buffers
-    std::vector<Vector3f> _positions;
-    std::vector<Vector3f> _velocities;
-    std::vector<Vector3f> _normals;
-    std::vector<Vector3f> _forces;
-    std::vector<float> _densities;
-    std::vector<float> _pressures;
+    std::vector<Vector3f> _fluidPositions;
+    std::vector<Vector3f> _fluidVelocities;
+    std::vector<Vector3f> _fluidNormals;
+    std::vector<Vector3f> _fluidForces;
+    std::vector<float> _fluidDensities;
+    std::vector<float> _fluidPressures;
+    Grid _fluidGrid;
 
     // Boundary particle buffers
     std::vector<Vector3f> _boundaryPositions;
     std::vector<Vector3f> _boundaryNormals;
+    Grid _boundaryGrid;
 
     float _t = 0.f;
 };
