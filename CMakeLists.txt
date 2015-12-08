@@ -108,6 +108,8 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/json11
   # tinydir
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinydir
+  # libexecstream
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/libexecstream
   # Resource file
   ${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -179,6 +181,7 @@ add_library(fluid STATIC
 
   ext/stb/stb_image_write.cpp
   ext/json11/json11.cpp
+  ext/libexecstream/exec-stream.cpp
   ${EXTRA_SOURCE}
 )
 target_link_libraries(fluid tbb_static nanogui ${NANOGUI_EXTRA_LIBS})
