@@ -1,5 +1,6 @@
 #include "Simulator.h"
 
+#include "core/FileUtils.h"
 #include "sim/Scene.h"
 #include "sim/SPH.h"
 
@@ -16,6 +17,9 @@ Simulator::Simulator(const SimulatorSettings &settings) :
     _engine.viewOptions().showDebug = false;
 
     _frameInterval = _settings.timescale / _settings.framerate;
+
+
+    FileUtils::createDir("images");
 
     _timer.reset();
 }
@@ -40,7 +44,7 @@ void Simulator::drawContents() {
     _engine.render();
 
     if (_engine.time() >= _frameTime) {
-        _engine.savePng(tfm::format("frame%04d.png", _frameIndex));
+        _engine.savePng(tfm::format("images/frame%04d.png", _frameIndex));
         _frameTime += _frameInterval;
         ++_frameIndex;
     }
