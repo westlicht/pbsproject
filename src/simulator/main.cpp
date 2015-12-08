@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     ("height", tfm::format("Display Height (default: %d)", settings.height), cxxopts::value<int>(settings.height), "N")
     ("duration", tfm::format("Duration (default: %.1f s)", settings.duration), cxxopts::value<float>(settings.duration), "s")
     ("timescale", tfm::format("Time Scaling (default: %.1f)", settings.timescale), cxxopts::value<float>(settings.timescale), "")
-    ("framerate", tfm::format("Frame Rate (default: %.1f)", settings.framerate), cxxopts::value<float>(settings.framerate), "")
+    ("framerate", tfm::format("Frame Rate (default: %d)", settings.framerate), cxxopts::value<int>(settings.framerate), "")
     ("D,define", "Parameter definition", cxxopts::value<std::vector<std::string>>(), "name=value")
     ("input", "Input files", cxxopts::value<std::vector<std::string>>())
     ;

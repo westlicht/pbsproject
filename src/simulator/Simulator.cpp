@@ -96,7 +96,8 @@ void Simulator::createVideo() {
     std::cout << "Encoding video ..." << std::endl;
 
     try {
-        exec_stream_t es(ffmpeg, "-y -i images/frame%04d.png -vcodec libx264 -crf 5 fluid.mp4");
+        std::string arguments = tfm::format("-y -framerate %d -i images/frame%%04d.png -vcodec libx264 -r %d -preset slow -crf 10 %s", _settings.framerate, _settings.framerate, "fluid.mp4");
+        exec_stream_t es(ffmpeg, arguments);
         std::cout << es.out().rdbuf();
         std::cout << es.err().rdbuf();
     } catch (const std::exception &e) {

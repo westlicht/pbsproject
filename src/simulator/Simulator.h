@@ -14,7 +14,7 @@ struct SimulatorSettings {
     int height = 720;
     float duration = 10.f;
     float timescale = 1.f;
-    float framerate = 30.f;
+    int framerate = 30;
     json11::Json sceneSettings;
 };
 
