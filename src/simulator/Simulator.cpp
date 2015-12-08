@@ -19,6 +19,15 @@ Simulator::Simulator(const SimulatorSettings &settings) :
     _engine.loadScene(settings.filename, settings.sceneSettings);
     _engine.viewOptions().showDebug = false;
 
+    _basename = FileUtils::splitExtension(_settings.filename).first;
+    if (!_settings.tag.empty()) {
+        _basename += "-" + _settings.tag;
+    }
+
+    std::cout << std::endl;
+    std::cout << _basename << std::endl;
+    std::cout << std::endl;
+
     _frameInterval = _settings.timescale / _settings.framerate;
 
     setupEmptyDirectory(filesystem::path("images").make_absolute());
@@ -92,11 +101,13 @@ void Simulator::createVideo() {
         return;
     }
 
+    std::string filename = _basename + ".mkv";
+
     std::cout << std::endl;
-    std::cout << "Encoding video ..." << std::endl;
+    std::cout << tfm::format("Encoding video '%s' ...", filename) << std::endl;
 
     try {
-        std::string arguments = tfm::format("-y -framerate %d -i images/frame%%04d.png -vcodec libx264 -r %d -preset slow -crf 10 %s", _settings.framerate, _settings.framerate, "fluid.mp4");
+        std::string arguments = tfm::format("-y -framerate %d -i images/frame%%04d.png -vcodec libx264 -r %d -preset slow -crf 10 %s", _settings.framerate, _settings.framerate, filename);
         exec_stream_t es(ffmpeg, arguments);
         std::cout << es.out().rdbuf();
         std::cout << es.err().rdbuf();

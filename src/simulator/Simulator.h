@@ -10,6 +10,7 @@ namespace pbs {
 
 struct SimulatorSettings {
     std::string filename;
+    std::string tag;
     int width = 1280;
     int height = 720;
     float duration = 10.f;
@@ -37,6 +38,7 @@ private:
     SimulatorSettings _settings;
     Engine _engine;
 
+    std::string _basename;
     int _frameIndex = 0;
     float _frameTime = 0.f;
     float _frameInterval;

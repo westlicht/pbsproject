@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
     ("timescale", tfm::format("Time Scaling (default: %.1f)", settings.timescale), cxxopts::value<float>(settings.timescale), "")
     ("framerate", tfm::format("Frame Rate (default: %d)", settings.framerate), cxxopts::value<int>(settings.framerate), "")
     ("D,define", "Parameter definition", cxxopts::value<std::vector<std::string>>(), "name=value")
+    ("tag", "Tag to append to output files", cxxopts::value<std::string>(settings.tag), "")
     ("input", "Input files", cxxopts::value<std::vector<std::string>>())
     ;
 
