@@ -102,7 +102,7 @@ std::string Scene::Mesh::toString() const {
     );
 }
 
-Scene Scene::load(const std::string &filename) {
+Scene Scene::load(const std::string &filename, const json11::Json &settings) {
     std::ifstream is(filename);
     std::stringstream ss;
     ss << is.rdbuf();
@@ -117,7 +117,15 @@ Scene Scene::load(const std::string &filename) {
     _resolver.prepend(filesystem::path(filename).parent_path());
 
     Scene scene;
-    scene.settings = Properties(jsonRoot["settings"]);
+
+    // Patch settings
+    auto settingsValues = jsonRoot["settings"].object_items();
+    for (auto kv : settings.object_items()) {
+        settingsValues[kv.first] = kv.second;
+    }
+    scene.settings = Properties(json11::Json(settingsValues));
+
+    DBG("settings = %s", scene.settings.json().dump());
 
     // Parse scene objects
     Json jsonScene = jsonRoot["scene"];

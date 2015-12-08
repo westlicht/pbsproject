@@ -2,6 +2,7 @@
 #include "sim/Engine.h"
 
 #include <nanogui/screen.h>
+#include <json11.h>
 
 #include <memory>
 
@@ -14,6 +15,7 @@ struct SimulatorSettings {
     float duration = 10.f;
     float timescale = 1.f;
     float framerate = 30.f;
+    json11::Json sceneSettings;
 };
 
 // Simulator screen.

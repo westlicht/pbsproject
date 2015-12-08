@@ -2,6 +2,7 @@
 
 #include <tinyformat.h>
 #include <cxxopts.h>
+#include <json11.h>
 
 int main(int argc, char *argv[]) {
 
@@ -16,6 +17,7 @@ int main(int argc, char *argv[]) {
     ("duration", tfm::format("Duration (default: %.1f s)", settings.duration), cxxopts::value<float>(settings.duration), "s")
     ("timescale", tfm::format("Time Scaling (default: %.1f)", settings.timescale), cxxopts::value<float>(settings.timescale), "")
     ("framerate", tfm::format("Frame Rate (default: %.1f)", settings.framerate), cxxopts::value<float>(settings.framerate), "")
+    ("D,define", "Parameter definition", cxxopts::value<std::vector<std::string>>(), "name=value")
     ("input", "Input files", cxxopts::value<std::vector<std::string>>())
     ;
 
@@ -34,6 +36,35 @@ int main(int argc, char *argv[]) {
         std::cout << options.help() << std::endl;
         return 0;
     }
+
+    // Parse definitions
+    json11::Json::object definitionValues;
+    if (options.count("D")) {
+        const auto &definitions = options["D"].as<std::vector<std::string>>();
+        for (const auto &definition : definitions) {
+            std::cout << definition << std::endl;
+
+            auto tokens = pbs::tokenize(definition, "=");
+            if (tokens.size() == 2) {
+                std::string error;
+                auto json = json11::Json::parse(tfm::format("{\"%s\":%s}", tokens[0], tokens[1]), error);
+                if (json == json11::Json()) {
+                    json = json11::Json::parse(tfm::format("{\"%s\":\"%s\"}", tokens[0], tokens[1]), error);
+                    if (json == json11::Json()) {
+                        std::cerr << tfm::format("Invalid definition %s (JSON error: %d)", definition, error) << std::endl;
+                        return -1;
+                    }
+                }
+                for (auto kv : json.object_items()) {
+                    definitionValues.emplace(kv.first, kv.second);
+                }
+            } else {
+                std::cerr << tfm::format("Invalid definition '%s' (needs to be in the form of 'name=value')", definition) << std::endl;
+                return -1;
+            }
+        }
+    }
+    settings.sceneSettings = json11::Json(definitionValues);
 
     if (options.count("input") != 1) {
         std::cerr << "Provide a scene file!" << std::endl << std::endl;

@@ -8,6 +8,7 @@
 #include "render/Painter.h"
 
 #include <filesystem/path.h>
+#include <json11.h>
 
 #include <memory>
 
@@ -32,7 +33,7 @@ public:
           ViewOptions &viewOptions()       { return _viewOptions; }
 
 
-    void loadScene(const filesystem::path &path);
+    void loadScene(const filesystem::path &path, const json11::Json &settings = json11::Json());
 
     void update(float dt);
     void updateStep();

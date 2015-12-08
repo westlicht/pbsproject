@@ -24,9 +24,9 @@ Engine::Engine(NVGcontext *ctx, const Vector2i &size) :
 {
 }
 
-void Engine::loadScene(const filesystem::path &path) {
+void Engine::loadScene(const filesystem::path &path, const json11::Json &settings) {
     DBG("Loading scene from '%s' ...", path.str());
-    Scene scene = Scene::load(path.str());
+    Scene scene = Scene::load(path.str(), settings);
     DBG("%s", scene.toString());
 
     _camera.setResolution(_size);

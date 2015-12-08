@@ -8,6 +8,7 @@
 #include <filesystem/path.h>
 
 #include <string>
+#include <map>
 #include <vector>
 
 namespace pbs {
@@ -70,7 +71,7 @@ public:
     std::vector<Sphere> spheres;
     std::vector<Mesh> meshes;
 
-    static Scene load(const std::string &filename);
+    static Scene load(const std::string &filename, const json11::Json &settings = json11::Json());
 
     std::string toString() const;
 

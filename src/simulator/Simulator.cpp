@@ -12,7 +12,7 @@ Simulator::Simulator(const SimulatorSettings &settings) :
 {
     setVisible(true);
 
-    _engine.loadScene(settings.filename);
+    _engine.loadScene(settings.filename, settings.sceneSettings);
     _engine.viewOptions().showDebug = false;
 
     _frameInterval = _settings.timescale / _settings.framerate;
