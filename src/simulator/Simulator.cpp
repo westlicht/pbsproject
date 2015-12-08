@@ -4,6 +4,9 @@
 #include "sim/Scene.h"
 #include "sim/SPH.h"
 
+#include <exec-stream.h>
+#include <tinydir.h>
+
 namespace pbs {
 
 Simulator::Simulator(const SimulatorSettings &settings) :
@@ -18,8 +21,7 @@ Simulator::Simulator(const SimulatorSettings &settings) :
 
     _frameInterval = _settings.timescale / _settings.framerate;
 
-
-    FileUtils::createDir("images");
+    setupEmptyDirectory(filesystem::path("images").make_absolute());
 
     _timer.reset();
 }
@@ -32,7 +34,7 @@ bool Simulator::keyboardEvent(int key, int scancode, int action, int modifiers) 
         if (action == GLFW_PRESS) {
             switch (key) {
             case GLFW_KEY_ESCAPE:
-                setVisible(false);
+                terminate();
                 break;
             }
         }
@@ -50,17 +52,70 @@ void Simulator::drawContents() {
     }
 
     if (_engine.time() >= _settings.duration) {
-        setVisible(false);
+        terminate();
     }
 
     // Show time estimate
-    float elapsed = _timer.elapsed() / 1000.f;
+    float elapsed = _timer.elapsed();
     float progress = _engine.time() / _settings.duration;
     float eta = progress != 0.f ? elapsed / progress - elapsed : 0.f;
     std::cout << tfm::format("\rProgress %.1f%% (Elapsed: %s ETA: %s)", progress * 100.f, timeString(elapsed), timeString(eta)) << std::flush;
 
     _engine.updateStep();
     glfwPostEmptyEvent();
+}
+
+void Simulator::initialize() {
+
+}
+
+void Simulator::terminate() {
+    createVideo();
+    setVisible(false);
+}
+
+void Simulator::createVideo() {
+    // FFMPEG candidate locations
+    std::vector<std::string> candidates = {
+        "/opt/local/bin/ffmpeg"
+    };
+
+    std::string ffmpeg;
+    for (const auto &candidate : candidates) {
+        if (filesystem::path(candidate).exists()) {
+            ffmpeg = candidate;
+            break;
+        }
+    }
+    if (ffmpeg.empty()) {
+        std::cerr << "Cannot find FFMPEG to encode video!" << std::endl;
+        return;
+    }
+
+    std::cout << std::endl;
+    std::cout << "Encoding video ..." << std::endl;
+
+    try {
+        exec_stream_t es(ffmpeg, "-y -i images/frame%04d.png -vcodec libx264 -crf 5 fluid.mp4");
+        std::cout << es.out().rdbuf();
+        std::cout << es.err().rdbuf();
+    } catch (const std::exception &e) {
+        std::cerr << "error: " << e.what() << "\n";
+    }
+}
+
+void Simulator::setupEmptyDirectory(const filesystem::path &path) {
+    FileUtils::createDir(path.str());
+    tinydir_dir dir;
+    tinydir_open_sorted(&dir, path.str().c_str());
+    for (size_t i = 0; i < dir.n_files; ++i) {
+        tinydir_file file;
+        tinydir_readfile_n(&dir, &file, i);
+        if (file.is_reg) {
+            FileUtils::deleteFile((path / file.name).str());
+        }
+    }
+    tinydir_close(&dir);
 }
 
 } // namespace pbs

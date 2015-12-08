@@ -28,6 +28,12 @@ public:
     void drawContents() override;
 
 private:
+    void initialize();
+    void terminate();
+    void createVideo();
+
+    void setupEmptyDirectory(const filesystem::path &path);
+
     SimulatorSettings _settings;
     Engine _engine;
 

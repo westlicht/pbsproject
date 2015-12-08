@@ -42,8 +42,6 @@ int main(int argc, char *argv[]) {
     if (options.count("D")) {
         const auto &definitions = options["D"].as<std::vector<std::string>>();
         for (const auto &definition : definitions) {
-            std::cout << definition << std::endl;
-
             auto tokens = pbs::tokenize(definition, "=");
             if (tokens.size() == 2) {
                 std::string error;
