@@ -13,11 +13,13 @@
 
 namespace pbs {
 
-ParticleGenerator::Boundary ParticleGenerator::generateBoundaryBox(const Box3f &box, float particleRadius, bool flipNormals) {
+ParticleGenerator::Boundary ParticleGenerator::generateBoundaryBox(const Box3f &box_, float particleRadius, bool flipNormals) {
+    Box3f box(box_);
+    box.min -= Vector3f(flipNormals ? particleRadius : -particleRadius);
+    box.max += Vector3f(flipNormals ? particleRadius : -particleRadius);
+
     Vector3f origin = box.min;
     Vector3f extents = box.extents();
-
-    particleRadius *= 0.7;
 
     int nx = std::ceil(extents.x() / (2.f * particleRadius));
     int ny = std::ceil(extents.y() / (2.f * particleRadius));
@@ -194,23 +196,18 @@ ParticleGenerator::Boundary ParticleGenerator::generateBoundaryMesh(const Mesh &
 }
 
 ParticleGenerator::Volume ParticleGenerator::generateVolumeBox(const Box3f &box, float particleRadius) {
-    float spacing = 2.f * particleRadius;
-    Vector3i min(
-        int(std::ceil(box.min.x() / spacing)),
-        int(std::ceil(box.min.y() / spacing)),
-        int(std::ceil(box.min.z() / spacing))
-    );
-    Vector3i max(
-        int(std::floor(box.max.x() / spacing)),
-        int(std::floor(box.max.y() / spacing)),
-        int(std::floor(box.max.z() / spacing))
-    );
+    Vector3f extents = box.extents();
+    int nx = std::ceil(extents.x() / (2.f * particleRadius));
+    int ny = std::ceil(extents.y() / (2.f * particleRadius));
+    int nz = std::ceil(extents.z() / (2.f * particleRadius));
+    Vector3f o = box.min + Vector3f(particleRadius);
+    Vector3f d = extents.cwiseQuotient(Vector3f(nx, ny, nz));
     Volume result;
-    for (int z = min.z(); z <= max.z(); ++z) {
-        for (int y = min.y(); y <= max.y(); ++y) {
-            for (int x = min.x(); x <= max.x(); ++x) {
-                Vector3f p(x * spacing, y * spacing, z * spacing);
-                result.positions.emplace_back(p);
+    for (int x = 0; x < nx; ++x) {
+        for (int y = 0; y < ny; ++y) {
+            for (int z = 0; z < nz; ++z) {
+                result.positions.emplace_back(o + Vector3f(x, y, z).cwiseProduct(d));
+
             }
         }
     }

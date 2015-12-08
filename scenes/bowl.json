@@ -1,13 +1,14 @@
 {
     "settings" : {
+        "method" : "pcisph",
         "particleRadius" : 0.01,
         "restDensity" : 1000.0,
         "soundSpeed" : 300.0,
+        "surfaceTension" : 1.0,
+        "viscosity" : 0.0001,
+        "timeStep" : 0.0005,
 
-        "gravity" : [0,-9.81,0],
-
-        "stiffness" : 10.0,
-        "viscosity" : 1.0
+        "gravity" : [0,-9.81,0]
     },
     "scene" : {
         "world" : {

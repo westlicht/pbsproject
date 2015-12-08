@@ -18,6 +18,42 @@ namespace pbs {
 
 filesystem::resolver Scene::_resolver;
 
+Scene::Camera::Camera(const Properties &props) {
+    position = props.getVector3("position", position);
+    target = props.getVector3("target", target);
+    up = props.getVector3("up", up);
+    fov = props.getFloat("fov", fov);
+    near = props.getFloat("near", near);
+    far = props.getFloat("far", far);
+}
+
+std::string Scene::Camera::toString() const {
+    return tfm::format(
+        "Camera[\n"
+        "  position = %s,\n"
+        "  target = %s,\n"
+        "  up = %s,\n"
+        "  fov = %f,\n"
+        "  near = %f,\n"
+        "  far = %f\n"
+        "]",
+        position, target, up, fov, near, far
+    );
+}
+
+Scene::World::World(const Properties &props) {
+    bounds = props.getBox3("bounds", bounds);
+}
+
+std::string Scene::World::toString() const {
+    return tfm::format(
+        "World[\n"
+        "  bounds = %s\n"
+        "]",
+        bounds
+    );
+}
+
 Scene::Shape::Shape(const Properties &props) {
     type = typeFromString(props.getString("type", "fluid"));
 }
@@ -26,46 +62,44 @@ Scene::Box::Box(const Properties &props) : Shape(props) {
     bounds = props.getBox3("bounds");
 }
 
+std::string Scene::Box::toString() const {
+    return tfm::format(
+        "Box[\n"
+        "  type = %s,\n"
+        "  bounds = %s\n"
+        "]",
+        typeToString(type), bounds
+    );
+}
+
 Scene::Sphere::Sphere(const Properties &props) : Shape(props) {
     position = props.getVector3("position");
     radius = props.getFloat("radius");
+}
+
+std::string Scene::Sphere::toString() const {
+    return tfm::format(
+        "Sphere[\n"
+        "  type = %s,\n"
+        "  position = %s,\n"
+        "  radius = %f\n"
+        "]",
+        typeToString(type), position, radius
+    );
 }
 
 Scene::Mesh::Mesh(const Properties &props) : Shape(props) {
     filename = resolvePath(props.getString("filename"));
 }
 
-Scene::Scene() {
-    world.bounds = Box3f(Vector3f(-1.f), Vector3f(1.f));
-}
-
-std::string Scene::dump() const {
-    std::stringstream ss;
-    ss << world.bounds;
-
-    std::string result;
-    result += "Scene[\n";
-    result += tfm::format("  settings = %s\n", settings.json().dump());
-    result += "  world = [\n";
-    result += tfm::format("    bounds = %s\n", world.bounds);
-    result += "  ],\n";
-    result += "  boxes = [\n";
-    for (const auto &box : boxes) {
-        result += tfm::format("    Box[bounds=%s],\n", box.bounds);
-    }
-    result += "  ],\n";
-    result += "  spheres = [\n";
-    for (const auto &sphere : spheres) {
-        result += tfm::format("    Sphere[position=%s, radius=%f],\n", sphere.position, sphere.radius);
-    }
-    result += "  ],\n";
-    result += "  meshes = [\n";
-    for (const auto &mesh : meshes) {
-        result += tfm::format("    Mesh[filename=%s],\n", mesh.filename);
-    }
-    result += "  ],\n";
-    result += "]";
-    return result;
+std::string Scene::Mesh::toString() const {
+    return tfm::format(
+        "Mesh[\n"
+        "  type = %s,\n"
+        "  filename = %s\n"
+        "]",
+        typeToString(type), filename
+    );
 }
 
 Scene Scene::load(const std::string &filename) {
@@ -88,10 +122,15 @@ Scene Scene::load(const std::string &filename) {
     // Parse scene objects
     Json jsonScene = jsonRoot["scene"];
     if (jsonScene.is_object()) {
-        {
-            auto jsonWorld = jsonScene["world"];
+        auto jsonCamera = jsonScene["camera"];
+        if (jsonCamera.is_object()) {
+            Properties props(jsonCamera);
+            scene.camera = Camera(jsonCamera);
+        }
+        auto jsonWorld = jsonScene["world"];
+        if (jsonWorld.is_object()) {
             Properties props(jsonWorld);
-            scene.world.bounds = props.getBox3("bounds");
+            scene.world = World(jsonWorld);
         }
         for (auto jsonBox : jsonScene["boxes"].array_items()) {
             scene.boxes.emplace_back(Box(Properties(jsonBox)));
@@ -102,9 +141,44 @@ Scene Scene::load(const std::string &filename) {
         for (auto jsonMesh : jsonScene["meshes"].array_items()) {
             scene.meshes.emplace_back(Mesh(Properties(jsonMesh)));
         }
+        // Set default camera
+        if (!jsonCamera.is_object()) {
+            Vector3f center = scene.world.bounds.center();
+            scene.camera.position += center;
+            scene.camera.target += center;
+        }
     }
 
     return scene;
+}
+
+template<typename T>
+static std::string vectorToString(const std::vector<T> &items) {
+    std::string result = "[";
+    for (const auto &item : items) {
+        result += "\n  " + indent(item.toString());
+    }
+    result += items.empty() ? "]" : "\n]";
+    return result;
+}
+
+std::string Scene::toString() const {
+    return tfm::format(
+        "Scene[\n"
+        "  settings = %s,\n"
+        "  camera = %s,\n"
+        "  world = %s,\n"
+        "  boxes = %s,\n"
+        "  spheres = %s,\n"
+        "  meshes = %s\n"
+        "]",
+        indent(settings.json().dump()),
+        indent(camera.toString()),
+        indent(world.toString()),
+        indent(vectorToString(boxes)),
+        indent(vectorToString(spheres)),
+        indent(vectorToString(meshes))
+    );
 }
 
 Scene::Type Scene::typeFromString(const std::string &name) {
@@ -115,6 +189,14 @@ Scene::Type Scene::typeFromString(const std::string &name) {
     } else {
         throw Exception("Unknown type name '%s'", name);
     }
+}
+
+std::string Scene::typeToString(Type type) {
+    switch (type) {
+    case Fluid: return "fluid";
+    case Boundary: return "boundary";
+    }
+    return "unknown";
 }
 
 std::string Scene::resolvePath(const std::string &path) {

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "core/Common.h"
+#include "core/Vector.h"
+#include "core/Box.h"
 #include "geometry/Mesh.h"
 
 #include <nanogui/glutil.h>
@@ -9,11 +11,10 @@ namespace pbs {
 
 // Painter for drawing a grid in XZ plane.
 struct GridPainter {
-    GLShader shader;
+    nanogui::GLShader shader;
     int vertexCount = 0;
 
-    GridPainter(int size = 10, float spacing = 0.1f)
-    {
+    GridPainter(int size = 10, float spacing = 0.1f) {
         shader.init(
             "GridPainter",
             // Vertex shader
@@ -46,7 +47,7 @@ struct GridPainter {
         shader.uploadAttrib("position", positions);
     }
 
-    void draw(const Matrix4f &mvp) {
+    void draw(const nanogui::Matrix4f &mvp) {
         shader.bind();
         shader.setUniform("mvp", mvp);
         glEnable(GL_BLEND);
@@ -58,7 +59,7 @@ struct GridPainter {
 
 // Painter for drawing a bounding box.
 struct BoxPainter {
-    GLShader shader;
+    nanogui::GLShader shader;
 
     BoxPainter() {
         shader.init(
@@ -79,34 +80,34 @@ struct BoxPainter {
         );
     }
 
-    void draw(const Matrix4f &mvp, const pbs::Box3f &box) {
+    void draw(const nanogui::Matrix4f &mvp, const Box3f &box) {
         MatrixXf positions(3, 24);
-        positions.col(0)  = pbs::Vector3f(box.min.x(), box.min.y(), box.min.z());
-        positions.col(1)  = pbs::Vector3f(box.max.x(), box.min.y(), box.min.z());
-        positions.col(2)  = pbs::Vector3f(box.min.x(), box.max.y(), box.min.z());
-        positions.col(3)  = pbs::Vector3f(box.max.x(), box.max.y(), box.min.z());
-        positions.col(4)  = pbs::Vector3f(box.min.x(), box.min.y(), box.min.z());
-        positions.col(5)  = pbs::Vector3f(box.min.x(), box.max.y(), box.min.z());
-        positions.col(6)  = pbs::Vector3f(box.max.x(), box.min.y(), box.min.z());
-        positions.col(7)  = pbs::Vector3f(box.max.x(), box.max.y(), box.min.z());
+        positions.col(0)  = Vector3f(box.min.x(), box.min.y(), box.min.z());
+        positions.col(1)  = Vector3f(box.max.x(), box.min.y(), box.min.z());
+        positions.col(2)  = Vector3f(box.min.x(), box.max.y(), box.min.z());
+        positions.col(3)  = Vector3f(box.max.x(), box.max.y(), box.min.z());
+        positions.col(4)  = Vector3f(box.min.x(), box.min.y(), box.min.z());
+        positions.col(5)  = Vector3f(box.min.x(), box.max.y(), box.min.z());
+        positions.col(6)  = Vector3f(box.max.x(), box.min.y(), box.min.z());
+        positions.col(7)  = Vector3f(box.max.x(), box.max.y(), box.min.z());
 
-        positions.col(8)  = pbs::Vector3f(box.min.x(), box.min.y(), box.max.z());
-        positions.col(9)  = pbs::Vector3f(box.max.x(), box.min.y(), box.max.z());
-        positions.col(10) = pbs::Vector3f(box.min.x(), box.max.y(), box.max.z());
-        positions.col(11) = pbs::Vector3f(box.max.x(), box.max.y(), box.max.z());
-        positions.col(12) = pbs::Vector3f(box.min.x(), box.min.y(), box.max.z());
-        positions.col(13) = pbs::Vector3f(box.min.x(), box.max.y(), box.max.z());
-        positions.col(14) = pbs::Vector3f(box.max.x(), box.min.y(), box.max.z());
-        positions.col(15) = pbs::Vector3f(box.max.x(), box.max.y(), box.max.z());
+        positions.col(8)  = Vector3f(box.min.x(), box.min.y(), box.max.z());
+        positions.col(9)  = Vector3f(box.max.x(), box.min.y(), box.max.z());
+        positions.col(10) = Vector3f(box.min.x(), box.max.y(), box.max.z());
+        positions.col(11) = Vector3f(box.max.x(), box.max.y(), box.max.z());
+        positions.col(12) = Vector3f(box.min.x(), box.min.y(), box.max.z());
+        positions.col(13) = Vector3f(box.min.x(), box.max.y(), box.max.z());
+        positions.col(14) = Vector3f(box.max.x(), box.min.y(), box.max.z());
+        positions.col(15) = Vector3f(box.max.x(), box.max.y(), box.max.z());
 
-        positions.col(16) = pbs::Vector3f(box.min.x(), box.min.y(), box.min.z());
-        positions.col(17) = pbs::Vector3f(box.min.x(), box.min.y(), box.max.z());
-        positions.col(18) = pbs::Vector3f(box.max.x(), box.min.y(), box.min.z());
-        positions.col(19) = pbs::Vector3f(box.max.x(), box.min.y(), box.max.z());
-        positions.col(20) = pbs::Vector3f(box.min.x(), box.max.y(), box.min.z());
-        positions.col(21) = pbs::Vector3f(box.min.x(), box.max.y(), box.max.z());
-        positions.col(22) = pbs::Vector3f(box.max.x(), box.max.y(), box.min.z());
-        positions.col(23) = pbs::Vector3f(box.max.x(), box.max.y(), box.max.z());
+        positions.col(16) = Vector3f(box.min.x(), box.min.y(), box.min.z());
+        positions.col(17) = Vector3f(box.min.x(), box.min.y(), box.max.z());
+        positions.col(18) = Vector3f(box.max.x(), box.min.y(), box.min.z());
+        positions.col(19) = Vector3f(box.max.x(), box.min.y(), box.max.z());
+        positions.col(20) = Vector3f(box.min.x(), box.max.y(), box.min.z());
+        positions.col(21) = Vector3f(box.min.x(), box.max.y(), box.max.z());
+        positions.col(22) = Vector3f(box.max.x(), box.max.y(), box.min.z());
+        positions.col(23) = Vector3f(box.max.x(), box.max.y(), box.max.z());
 
         shader.bind();
         shader.uploadAttrib("position", positions);
@@ -120,7 +121,7 @@ struct BoxPainter {
 
 // Painter for drawing particles.
 struct ParticlePainter {
-    GLShader shader;
+    nanogui::GLShader shader;
 
     ParticlePainter() {
         shader.init(
@@ -141,7 +142,7 @@ struct ParticlePainter {
         );
     }
 
-    void draw(const Matrix4f &mvp, const MatrixXf &positions) {
+    void draw(const nanogui::Matrix4f &mvp, const MatrixXf &positions) {
         shader.bind();
         shader.uploadAttrib("position", positions);
         shader.setUniform("mvp", mvp);
@@ -153,7 +154,7 @@ struct ParticlePainter {
 
 // Painter for drawing particle spheres.
 struct ParticleSpherePainter {
-    GLShader shader;
+    nanogui::GLShader shader;
 
     ParticleSpherePainter() {
         shader.init(
@@ -208,7 +209,7 @@ struct ParticleSpherePainter {
         );
     }
 
-    void draw(const Matrix4f &mv, const Matrix4f &proj, const MatrixXf &positions, const Color &color, float particleRadius = 0.03f) {
+    void draw(const nanogui::Matrix4f &mv, const nanogui::Matrix4f &proj, const MatrixXf &positions, const nanogui::Color &color, float particleRadius = 0.03f) {
         shader.bind();
         shader.uploadAttrib("position", positions);
         shader.setUniform("mv", mv);
@@ -222,7 +223,7 @@ struct ParticleSpherePainter {
 
 // Painter for drawing particle normals.
 struct ParticleNormalPainter {
-    GLShader shader;
+    nanogui::GLShader shader;
 
     ParticleNormalPainter() {
         shader.init(
@@ -263,7 +264,7 @@ struct ParticleNormalPainter {
         );
     }
 
-    void draw(const Matrix4f &mvp, const MatrixXf &positions, const MatrixXf &normals, const Color &color, float normalLength = 0.05f) {
+    void draw(const nanogui::Matrix4f &mvp, const MatrixXf &positions, const MatrixXf &normals, const nanogui::Color &color, float normalLength = 0.05f) {
         shader.bind();
         shader.uploadAttrib("position", positions);
         shader.uploadAttrib("normal", normals);
@@ -277,7 +278,7 @@ struct ParticleNormalPainter {
 
 // Painter for drawing a mesh.
 struct MeshPainter {
-    GLShader shader;
+    nanogui::GLShader shader;
     int triangleCount = 0;
 
     MeshPainter() {
@@ -304,6 +305,10 @@ struct MeshPainter {
         );
     }
 
+    MeshPainter(const Mesh &mesh) : MeshPainter() {
+        setMesh(mesh);
+    }
+
     void setMesh(const Mesh &mesh) {
         shader.bind();
         shader.uploadAttrib("position", mesh.vertices());
@@ -312,7 +317,7 @@ struct MeshPainter {
         triangleCount = mesh.triangles().cols();
     }
 
-    void draw(const Matrix4f &mvp) {
+    void draw(const nanogui::Matrix4f &mvp) {
         shader.bind();
         shader.setUniform("mvp", mvp);
         glEnable(GL_DEPTH_TEST);

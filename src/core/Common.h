@@ -104,6 +104,9 @@ std::string timeString(double time, bool precise = false);
 // Convert a memory amount in bytes into a human-readable string
 std::string memString(size_t size, bool precise = false);
 
+/// Indent a string by the specified number of spaces
+std::string indent(const std::string &string, int amount = 2);
+
 // Debugging ------------------------------------------------------------------
 
 class Exception : public std::runtime_error {

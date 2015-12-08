@@ -1,0 +1,21 @@
+{
+    "settings" : {
+        "supportParticles" : 50,
+        "particlesPerUnitVolume" : 100000,
+        "restDensity" : 1000.0,
+        "soundSpeed" : 300.0,
+
+        "stiffness" : 10.0,
+        "viscosity" : 1.0
+    },
+    "scene" : {
+        "world" : {
+            "bounds" : [[-1,-1,-1],[1,1,1]]
+        },
+        "meshes" : [
+            {
+                "filename" : "meshes/bowl2.obj"
+            }
+        ]
+    }
+}

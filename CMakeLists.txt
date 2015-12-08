@@ -130,7 +130,7 @@ include_directories(
 # endforeach()
 
 # Create config file and add to include directories
-configure_file("${PROJECT_SOURCE_DIR}/src/Config.h.in" "${PROJECT_BINARY_DIR}/Config.h")
+configure_file("${PROJECT_SOURCE_DIR}/src/viewer/Config.h.in" "${PROJECT_BINARY_DIR}/Config.h")
 include_directories(${PROJECT_BINARY_DIR})
 
 set(EXTRA_SOURCE "")
@@ -143,13 +143,14 @@ add_custom_command(
   COMMAND bin2c ARGS ${BIN2C_CMDLINE}
   DEPENDS bin2c ${resources}
   COMMENT "Running bin2c"
-  PRE_BUILD VERBATIM)
+  PRE_BUILD VERBATIM
+)
 
-add_executable(pbsproject #MACOSX_BUNDLE
-  #resources.h resources.cpp
+add_library(fluid STATIC
   src/core/AlignedAllocator.h
   src/core/Box.h
   src/core/Common.h src/core/Common.cpp
+  src/core/DebugMonitor.h src/core/DebugMonitor.cpp
   src/core/Morton.h
   src/core/Profiler.h src/core/Profiler.cpp
   src/core/Properties.h src/core/Properties.cpp
@@ -166,23 +167,34 @@ add_executable(pbsproject #MACOSX_BUNDLE
   src/geometry/VoxelGrid.h
   src/geometry/Voxelizer.h src/geometry/Voxelizer.cpp
 
+  src/render/Camera.h
+  src/render/Painter.h
+
+  src/sim/Cache.h src/sim/Cache.cpp
+  src/sim/Engine.h src/sim/Engine.cpp
   src/sim/Grid.h
   src/sim/Kernel.h
   src/sim/Scene.h src/sim/Scene.cpp
   src/sim/SPH.h src/sim/SPH.cpp
 
-  src/viewer/Painter.h
-  src/viewer/Viewer2d.h
-  src/viewer/Viewer3d.h
-
-  src/SPH.h src/SPH.cpp
-  src/Test.h
-  src/main.cpp
-
   ext/stb/stb_image_write.cpp
   ext/json11/json11.cpp
-  ${EXTRA_SOURCE})
-target_link_libraries(pbsproject tbb_static nanogui ${NANOGUI_EXTRA_LIBS})
+  ${EXTRA_SOURCE}
+)
+target_link_libraries(fluid tbb_static nanogui ${NANOGUI_EXTRA_LIBS})
+
+add_executable(viewer #MACOSX_BUNDLE
+  #resources.h resources.cpp
+  src/viewer/main.cpp
+  src/viewer/Viewer.h src/viewer/Viewer.cpp
+)
+target_link_libraries(viewer fluid)
+
+add_executable(simulator
+  src/simulator/main.cpp
+  src/simulator/Simulator.h src/simulator/Simulator.cpp
+)
+target_link_libraries(simulator fluid)
 
 #set_target_properties(pbsproject PROPERTIES OUTPUT_NAME "PBS Project")
 
