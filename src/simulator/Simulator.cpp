@@ -52,6 +52,9 @@ void Simulator::drawContents() {
 
     if (_engine.time() >= _frameTime) {
         _engine.savePng(tfm::format("images/frame%04d.png", _frameIndex));
+        if (_settings.cache) {
+            _engine.writeCache(_frameIndex);
+        }
         _frameTime += _frameInterval;
         ++_frameIndex;
     }
@@ -75,6 +78,10 @@ void Simulator::initialize() {
 }
 
 void Simulator::terminate() {
+    if (_settings.cache) {
+        _engine.cache().setFrameCount(_frameIndex);
+        _engine.cache().commit();
+    }
     createVideo();
     setVisible(false);
 }
