@@ -24,13 +24,9 @@ Simulator::Simulator(const SimulatorSettings &settings) :
         _basename += "-" + _settings.tag;
     }
 
-    std::cout << std::endl;
-    std::cout << _basename << std::endl;
-    std::cout << std::endl;
-
     _frameInterval = _settings.timescale / _settings.framerate;
 
-    setupEmptyDirectory(filesystem::path("images").make_absolute());
+    setupEmptyDirectory("images");
 
     _timer.reset();
 }
@@ -86,7 +82,8 @@ void Simulator::terminate() {
 void Simulator::createVideo() {
     // FFMPEG candidate locations
     std::vector<std::string> candidates = {
-        "/opt/local/bin/ffmpeg"
+        "/opt/local/bin/ffmpeg",
+        "/usr/bin/avconv"
     };
 
     std::string ffmpeg;
@@ -108,11 +105,21 @@ void Simulator::createVideo() {
 
     try {
         std::string arguments = tfm::format("-y -framerate %d -i images/frame%%04d.png -vcodec libx264 -r %d -preset slow -crf 10 %s", _settings.framerate, _settings.framerate, filename);
-        exec_stream_t es(ffmpeg, arguments);
-        std::cout << es.out().rdbuf();
-        std::cout << es.err().rdbuf();
+        exec_stream_t es;
+        // Set 5 minutes timeout
+        es.set_wait_timeout(exec_stream_t::s_out | exec_stream_t::s_err | exec_stream_t::s_child, 300*1000);
+        es.start(ffmpeg, arguments);
+
+        std::string s;
+        while (std::getline(es.err(), s).good()) {
+            std::cout << s << std::endl;
+        }
+
+        if (!es.close()) {
+            std::cerr << "FFMPEG timeout!" << std::endl;
+        }
     } catch (const std::exception &e) {
-        std::cerr << "error: " << e.what() << "\n";
+        std::cerr << "exec-stream error: " << e.what() << "\n";
     }
 }
 
