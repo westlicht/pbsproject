@@ -215,7 +215,7 @@ elseif (APPLE)
   # set_source_files_properties(resources/im.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 else()
   # Insulate from a few types of ABI changes by statically linking against libgcc and libstdc++
-  set_target_properties(pbsproject PROPERTIES LINK_FLAGS "-static-libgcc")
+  set_target_properties(viewer PROPERTIES LINK_FLAGS "-static-libgcc")
   #set_target_properties(pbsproject PROPERTIES LINK_FLAGS "-static-libgcc -static-libstdc++")
 endif()
 
