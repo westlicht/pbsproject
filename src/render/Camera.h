@@ -40,12 +40,10 @@ public:
             _arcball.motion(p);
             if (_leftButton) {
                 nanogui::Matrix4f view = _arcball.matrix();
-                _up = view.block<1,3>(1,0);
                 float viewDistance = (_position - _target).norm();
-                nanogui::Vector3f dir = view.block<3,3>(0,0) * nanogui::Vector3f(0.f, 0.f, 1.f);
-                dir.x() = -dir.x();
-                dir.y() = -dir.y();
+                nanogui::Vector3f dir = view.block<3,3>(0,0).transpose() * nanogui::Vector3f(0.f, 0.f, 1.f);
                 _position = _target + dir * viewDistance;
+                _up = view.block<1,3>(1,0);
             }
 
         } else if (_leftButton && (modifiers & GLFW_MOD_CONTROL)) {
@@ -55,8 +53,8 @@ public:
         } else if (_leftButton && (modifiers & GLFW_MOD_SHIFT)) {
             float viewDistance = (_position - _target).norm();
             nanogui::Matrix4f view = viewMatrix();
-            nanogui::Vector3f left = view.block<1,3>(0, 0);
-            nanogui::Vector3f up = view.block<1,3>(1, 0);
+            nanogui::Vector3f left = view.block<1,3>(0,0);
+            nanogui::Vector3f up = view.block<1,3>(1,0);
             nanogui::Vector3f offset = -left * rel.x() * (viewDistance * 0.001f) + up * rel.y() * (viewDistance * 0.001f);
             _position += offset;
             _target += offset;
