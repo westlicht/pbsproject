@@ -6,6 +6,8 @@
 #include "core/Profiler.h"
 #include "core/FileUtils.h"
 
+#include "geometry/ParticleMesher.h"
+
 #include <stb_image_write.h>
 
 namespace pbs {
@@ -27,7 +29,7 @@ Engine::Engine(NVGcontext *ctx, const Vector2i &size) :
     _boxPainter.reset(new BoxPainter());
     _particlePainter.reset(new ParticleSpherePainter());
     _particleNormalPainter.reset(new ParticleNormalPainter());
-    _meshPainter.reset(new MeshPainter());
+    _fluidMeshPainter.reset(new MeshPainter());
 }
 
 void Engine::loadScene(const filesystem::path &path, const json11::Json &settings) {
@@ -86,12 +88,12 @@ void Engine::createFluidMesh() {
     );
 
     _fluidMesh = ParticleMesher::createMeshIsotropic(positions, bounds, cells, params);
-    _meshPainter->setMesh(_fluidMesh);
+    _fluidMeshPainter->setMesh(_fluidMesh);
 }
 
 void Engine::clearFluidMesh() {
     _fluidMesh = Mesh();
-    _meshPainter->setMesh(_fluidMesh);
+    _fluidMeshPainter->setMesh(_fluidMesh);
 }
 
 void Engine::render() {
@@ -103,26 +105,27 @@ void Engine::render() {
     nanogui::Matrix4f mv = view;
     nanogui::Matrix4f mvp = proj * view;
 
-    if (_viewOptions.showGrid) {
+    if (_viewOptions.showDomain) {
         //_gridPainter->draw(mvp);
         _boxPainter->draw(mvp, _sph->bounds());
     }
-    if (_viewOptions.showParticles) {
+    if (_viewOptions.showFluidParticles) {
         float particleRadius = _sph->parameters().particleRadius * 2.f;
         _particlePainter->draw(mv, proj, toMatrix(_sph->fluidPositions()), nanogui::Color(0.5f, 0.5f, 1.f, 1.f), particleRadius);
+    }
+    if (_viewOptions.showFluidMesh) {
+        _fluidMeshPainter->draw(mvp);
     }
     if (_viewOptions.showBoundaryParticles) {
         float particleRadius = _sph->parameters().particleRadius * 2.f;
         _particlePainter->draw(mv, proj, toMatrix(_sph->boundaryPositions()), nanogui::Color(1.f, 0.5f, 0.5f, 1.f), particleRadius);
         //_particleNormalPainter->draw(mvp, toMatrix(_sph->boundaryPositions()), toMatrix(_sph->boundaryNormals()), nanogui::Color(1.f, 1.f, 1.f, 1.f), particleRadius * 2.f);
     }
-    if (_viewOptions.showMeshes) {
-        _meshPainter->draw(mvp);
+    if (_viewOptions.showBoundaryMeshes) {
         for (const auto &painter : _boundaryMeshPainters) {
             painter->draw(mvp);
         }
     }
-
     if (_viewOptions.showDebug) {
         renderDebugOverlay();
     }
@@ -134,14 +137,22 @@ void Engine::setCachePosition(float position) {
     readCache(frame);
 }
 
-void Engine::writeCache(int frame) {
+void Engine::writeCache(int frame, bool particles, bool mesh) {
     _cache->setFrame(frame);
-    _cache->writeParticles(_sph->fluidPositions());
+    if (particles) {
+        _cache->writeParticles(_sph->fluidPositions());
+    }
+    if (mesh) {
+        _cache->writeMesh(_fluidMesh);
+    }
 }
 
 void Engine::readCache(int frame) {
     _cache->setFrame(frame);
     _cache->readParticles(_sph->fluidPositions());
+    if (_cache->readMesh(_fluidMesh)) {
+        _fluidMeshPainter->setMesh(_fluidMesh);
+    }
 }
 
 void Engine::savePng(const filesystem::path &path) {

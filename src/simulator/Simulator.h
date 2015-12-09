@@ -9,6 +9,11 @@
 namespace pbs {
 
 struct SimulatorSettings {
+    enum RenderMode {
+        Particles,
+        Mesh,
+    };
+
     std::string filename;
     std::string tag;
     int width = 1280;
@@ -16,8 +21,24 @@ struct SimulatorSettings {
     float duration = 10.f;
     float timescale = 1.f;
     int framerate = 30;
-    bool cache = false;
+    RenderMode renderMode;
+    bool cacheParticles = false;
+    bool cacheMesh = false;
     json11::Json sceneSettings;
+
+    static std::string renderModeToString(RenderMode renderMode) {
+        switch (renderMode) {
+        case Particles: return "particles";
+        case Mesh:      return "mesh";
+        default:        return "unknown";
+        }
+    }
+
+    static RenderMode stringToRenderMode(const std::string &renderMode) {
+        if (renderMode == "particles") return Particles;
+        if (renderMode == "mesh") return Mesh;
+        return Particles;
+    }
 };
 
 // Simulator screen.

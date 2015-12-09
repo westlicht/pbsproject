@@ -48,6 +48,22 @@ bool Cache::readParticles(std::vector<Vector3f> &particles) {
     return true;
 }
 
+void Cache::writeMesh(const Mesh &mesh) {
+    auto os = ostreamFor("mesh", _frame);
+    mesh.write(*os);
+}
+
+bool Cache::readMesh(Mesh &mesh) {
+    auto is = istreamFor("mesh", _frame);
+    if (!is) {
+        return false;
+    }
+    mesh.read(*is);
+    return true;
+}
+
+
+
 void Cache::writeMeta() {
     std::ofstream os((_dir / "metadata").str());
     Serialize::write(os, _frameCount);

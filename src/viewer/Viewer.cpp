@@ -81,16 +81,21 @@ bool Viewer::keyboardEvent(int key, int scancode, int action, int modifiers) {
                 _isRunning = !_isRunning;
                 break;
             case GLFW_KEY_G:
-                _engine.viewOptions().showGrid = !_engine.viewOptions().showGrid;
+                _engine.viewOptions().showDomain = !_engine.viewOptions().showDomain;
                 break;
-            case GLFW_KEY_P:
-                _engine.viewOptions().showParticles = !_engine.viewOptions().showParticles;
+            case GLFW_KEY_F:
+                if (modifiers & GLFW_MOD_SHIFT) {
+                    _engine.viewOptions().showFluidMesh = !_engine.viewOptions().showFluidMesh;
+                } else {
+                    _engine.viewOptions().showFluidParticles = !_engine.viewOptions().showFluidParticles;
+                }
                 break;
             case GLFW_KEY_B:
-                _engine.viewOptions().showBoundaryParticles = !_engine.viewOptions().showBoundaryParticles;
-                break;
-            case GLFW_KEY_M:
-                _engine.viewOptions().showMeshes = !_engine.viewOptions().showMeshes;
+                if (modifiers & GLFW_MOD_SHIFT) {
+                    _engine.viewOptions().showBoundaryMeshes = !_engine.viewOptions().showBoundaryMeshes;
+                } else {
+                    _engine.viewOptions().showBoundaryParticles = !_engine.viewOptions().showBoundaryParticles;
+                }
                 break;
             case GLFW_KEY_D:
                 _engine.viewOptions().showDebug = !_engine.viewOptions().showDebug;
@@ -147,14 +152,16 @@ void Viewer::initializeGUI() {
     renderAnimationButton->setCallback([&] () { renderAnimation(); refreshGUI(); });
 
     new nanogui::Label(_window, "Display", "sans-bold");
-    _showGridCheckBox = new nanogui::CheckBox(_window, "Show Grid & Domain (G)");
-    _showGridCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showGrid = b; refreshGUI(); });
-    _showParticlesCheckBox = new nanogui::CheckBox(_window, "Show Particles (P)");
-    _showParticlesCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showParticles = b; refreshGUI(); });
+    _showDomainCheckBox = new nanogui::CheckBox(_window, "Show Domain (G)");
+    _showDomainCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showDomain = b; refreshGUI(); });
+    _showFluidParticlesCheckBox = new nanogui::CheckBox(_window, "Show Fluid Particles (F)");
+    _showFluidParticlesCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showFluidParticles = b; refreshGUI(); });
+    _showFluidMeshCheckBox = new nanogui::CheckBox(_window, "Show Fluid Mesh (Shift+F)");
+    _showFluidMeshCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showFluidMesh = b; refreshGUI(); });
     _showBoundaryParticlesCheckBox = new nanogui::CheckBox(_window, "Show Boundary Particles (B)");
     _showBoundaryParticlesCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showBoundaryParticles = b; refreshGUI(); });
-    _showMeshesCheckBox = new nanogui::CheckBox(_window, "Show Meshes (M)");
-    _showMeshesCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showMeshes = b; refreshGUI(); });
+    _showBoundaryMeshesCheckBox = new nanogui::CheckBox(_window, "Show Boundary Meshes (Shift+B)");
+    _showBoundaryMeshesCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showBoundaryMeshes = b; refreshGUI(); });
     _showDebugCheckBox = new nanogui::CheckBox(_window, "Show Debug (D)");
     _showDebugCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showDebug = b; refreshGUI(); });
     _showCacheCheckBox = new nanogui::CheckBox(_window, "Show Cache (C)");
@@ -178,10 +185,11 @@ void Viewer::initializeGUI() {
 }
 
 void Viewer::refreshGUI() {
-    _showGridCheckBox->setChecked(_engine.viewOptions().showGrid);
-    _showParticlesCheckBox->setChecked(_engine.viewOptions().showParticles);
+    _showDomainCheckBox->setChecked(_engine.viewOptions().showDomain);
+    _showFluidParticlesCheckBox->setChecked(_engine.viewOptions().showFluidParticles);
+    _showFluidMeshCheckBox->setChecked(_engine.viewOptions().showFluidMesh);
     _showBoundaryParticlesCheckBox->setChecked(_engine.viewOptions().showBoundaryParticles);
-    _showMeshesCheckBox->setChecked(_engine.viewOptions().showMeshes);
+    _showBoundaryMeshesCheckBox->setChecked(_engine.viewOptions().showBoundaryMeshes);
     _showDebugCheckBox->setChecked(_engine.viewOptions().showDebug);
     _showCacheCheckBox->setChecked(_engine.viewOptions().showCache);
     _transportPanel->setVisible(_engine.viewOptions().showCache);

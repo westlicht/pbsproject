@@ -18,10 +18,11 @@ namespace pbs {
 class Engine {
 public:
     struct ViewOptions {
-        bool showGrid = true;
-        bool showParticles = true;
+        bool showDomain = true;
+        bool showFluidParticles = true;
+        bool showFluidMesh = false;
         bool showBoundaryParticles = false;
-        bool showMeshes = true;
+        bool showBoundaryMeshes = true;
         bool showDebug = true;
         bool showCache = false;
     };
@@ -47,7 +48,7 @@ public:
 
     Cache &cache() { return *_cache; }
     void setCachePosition(float position);
-    void writeCache(int frame);
+    void writeCache(int frame, bool particles, bool mesh);
     void readCache(int frame);
 
     void savePng(const filesystem::path &path);
@@ -70,7 +71,7 @@ private:
     std::unique_ptr<BoxPainter> _boxPainter;
     std::unique_ptr<ParticleSpherePainter> _particlePainter;
     std::unique_ptr<ParticleNormalPainter> _particleNormalPainter;
-    std::unique_ptr<MeshPainter> _meshPainter;
+    std::unique_ptr<MeshPainter> _fluidMeshPainter;
     std::vector<std::unique_ptr<MeshPainter>> _boundaryMeshPainters;
 };
 

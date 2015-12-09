@@ -48,10 +48,11 @@ private:
     nanogui::Window *_window;
     nanogui::ComboBox *_sceneComboBox;
 
-    nanogui::CheckBox *_showGridCheckBox;
-    nanogui::CheckBox *_showParticlesCheckBox;
+    nanogui::CheckBox *_showDomainCheckBox;
+    nanogui::CheckBox *_showFluidParticlesCheckBox;
+    nanogui::CheckBox *_showFluidMeshCheckBox;
     nanogui::CheckBox *_showBoundaryParticlesCheckBox;
-    nanogui::CheckBox *_showMeshesCheckBox;
+    nanogui::CheckBox *_showBoundaryMeshesCheckBox;
     nanogui::CheckBox *_showDebugCheckBox;
     nanogui::CheckBox *_showCacheCheckBox;
 

@@ -2,6 +2,8 @@
 
 #include "core/Common.h"
 
+#include "geometry/Mesh.h"
+
 #include <filesystem/path.h>
 
 #include <ostream>
@@ -26,6 +28,9 @@ public:
 
     void writeParticles(const std::vector<Vector3f> &particles);
     bool readParticles(std::vector<Vector3f> &particles);
+
+    void writeMesh(const Mesh &mesh);
+    bool readMesh(Mesh &mesh);
 
 private:
     void writeMeta();

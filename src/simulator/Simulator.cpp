@@ -48,13 +48,36 @@ bool Simulator::keyboardEvent(int key, int scancode, int action, int modifiers) 
 }
 
 void Simulator::drawContents() {
+
+    bool writeFrame = _engine.time() >= _frameTime;
+
+    _engine.viewOptions().showDebug = !writeFrame;
+
+    switch (_settings.renderMode) {
+    case SimulatorSettings::Particles:
+        _engine.viewOptions().showFluidParticles = true;
+        _engine.viewOptions().showFluidMesh = false;
+        break;
+    case SimulatorSettings::Mesh:
+        _engine.viewOptions().showFluidParticles = !writeFrame;
+        _engine.viewOptions().showFluidMesh = writeFrame;
+        break;
+    }
+
+    if (writeFrame) {
+        if (_settings.renderMode == SimulatorSettings::Mesh || _settings.cacheMesh) {
+            _engine.createFluidMesh();
+        }
+    }
+
     _engine.render();
 
-    if (_engine.time() >= _frameTime) {
+    if (writeFrame) {
         _engine.savePng(tfm::format("images/frame%04d.png", _frameIndex));
-        if (_settings.cache) {
-            _engine.writeCache(_frameIndex);
+        if (_settings.cacheParticles || _settings.cacheMesh) {
+            _engine.writeCache(_frameIndex, _settings.cacheParticles, _settings.cacheMesh);
         }
+        _engine.clearFluidMesh();
         _frameTime += _frameInterval;
         ++_frameIndex;
     }
@@ -78,7 +101,7 @@ void Simulator::initialize() {
 }
 
 void Simulator::terminate() {
-    if (_settings.cache) {
+    if (_settings.cacheParticles || _settings.cacheMesh) {
         _engine.cache().setFrameCount(_frameIndex);
         _engine.cache().commit();
     }

@@ -9,6 +9,7 @@ int main(int argc, char *argv[]) {
     cxxopts::Options options(argv[0], " - Fluid Simulator");
 
     pbs::SimulatorSettings settings;
+    std::string renderMode = pbs::SimulatorSettings::renderModeToString(settings.renderMode);
 
     options.add_options()
     ("h,help", "Print help")
@@ -17,7 +18,9 @@ int main(int argc, char *argv[]) {
     ("duration", tfm::format("Duration (default: %.1f s)", settings.duration), cxxopts::value<float>(settings.duration), "s")
     ("timescale", tfm::format("Time Scaling (default: %.1f)", settings.timescale), cxxopts::value<float>(settings.timescale), "")
     ("framerate", tfm::format("Frame Rate (default: %d)", settings.framerate), cxxopts::value<int>(settings.framerate), "")
-    ("cache", tfm::format("Write cache (default: %d)", settings.cache), cxxopts::value<bool>(settings.cache), "")
+    ("renderMode", tfm::format("Render Mode (default: %s)", renderMode), cxxopts::value<std::string>(renderMode), "[particles|mesh]")
+    ("cacheParticles", tfm::format("Write particle cache (default: %d)", settings.cacheParticles), cxxopts::value<bool>(settings.cacheParticles), "")
+    ("cacheMesh", tfm::format("Write mesh cache (default: %d)", settings.cacheMesh), cxxopts::value<bool>(settings.cacheMesh), "")
     ("D,define", "Parameter definition", cxxopts::value<std::vector<std::string>>(), "name=value")
     ("tag", "Tag to append to output files", cxxopts::value<std::string>(settings.tag), "")
     ("input", "Input files", cxxopts::value<std::vector<std::string>>())
@@ -72,6 +75,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     settings.filename = options["input"].as<std::vector<std::string>>().front();
+    settings.renderMode = pbs::SimulatorSettings::stringToRenderMode(renderMode);
 
     nanogui::init();
     std::unique_ptr<pbs::Simulator> screen(new pbs::Simulator(settings));
