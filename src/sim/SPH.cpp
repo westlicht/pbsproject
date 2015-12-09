@@ -766,6 +766,7 @@ void SPH::buildScene(const Scene &scene) {
             break;
         case Scene::Boundary:
             addBoundaryParticles(ParticleGenerator::generateBoundaryBox(sceneBox.bounds, _particleRadius));
+            _boundaryMeshes.emplace_back(Mesh::createBox(sceneBox.bounds));
             break;
         }
     }
@@ -776,6 +777,7 @@ void SPH::buildScene(const Scene &scene) {
             break;
         case Scene::Boundary:
             addBoundaryParticles(ParticleGenerator::generateBoundarySphere(sceneSphere.position, sceneSphere.radius, _particleRadius));
+            _boundaryMeshes.emplace_back(Mesh::createSphere(sceneSphere.position, sceneSphere.radius));
             break;
         }
     }

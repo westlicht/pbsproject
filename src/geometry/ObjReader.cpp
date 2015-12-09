@@ -1,6 +1,8 @@
 #include "ObjReader.h"
 #include "Mesh.h"
 
+#include "core/Vector.h"
+
 #include <fstream>
 #include <unordered_map>
 
