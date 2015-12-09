@@ -1,5 +1,6 @@
 #include "core/Common.h"
 #include "sim/Engine.h"
+#include "gui/Panel.h"
 
 #include <nanogui/checkbox.h>
 #include <nanogui/combobox.h>
@@ -52,6 +53,10 @@ private:
     nanogui::CheckBox *_showBoundaryParticlesCheckBox;
     nanogui::CheckBox *_showMeshesCheckBox;
     nanogui::CheckBox *_showDebugCheckBox;
+    nanogui::CheckBox *_showCacheCheckBox;
+
+    nanogui::Panel *_transportPanel;
+    nanogui::Slider *_transportSlider;
 
     std::vector<std::string> _sceneNames;
 

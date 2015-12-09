@@ -23,6 +23,7 @@ public:
         bool showBoundaryParticles = false;
         bool showMeshes = true;
         bool showDebug = true;
+        bool showCache = false;
     };
 
     Engine(NVGcontext *ctx, const Vector2i &size);
@@ -41,6 +42,11 @@ public:
     float time() const;
 
     void render();
+
+    Cache &cache() { return *_cache; }
+    void setCachePosition(float position);
+    void writeCache(int frame);
+    void readCache(int frame);
 
     void savePng(const filesystem::path &path);
 

@@ -100,6 +100,22 @@ void Engine::render() {
     }
 }
 
+void Engine::setCachePosition(float position) {
+    int frame = int(std::floor((_cache->frameCount() - 1) * position));
+    DBG("frame = %d", frame);
+    readCache(frame);
+}
+
+void Engine::writeCache(int frame) {
+    _cache->setFrame(frame);
+    _cache->writeParticles(_sph->fluidPositions());
+}
+
+void Engine::readCache(int frame) {
+    _cache->setFrame(frame);
+    _cache->readParticles(_sph->fluidPositions());
+}
+
 void Engine::savePng(const filesystem::path &path) {
     std::unique_ptr<unsigned char[]> pixels(new unsigned char[_size.prod() * 3]);
     glReadPixels(0, 0, _size.x(), _size.y(), GL_RGB, GL_UNSIGNED_BYTE, pixels.get());

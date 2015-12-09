@@ -95,6 +95,9 @@ bool Viewer::keyboardEvent(int key, int scancode, int action, int modifiers) {
             case GLFW_KEY_D:
                 _engine.viewOptions().showDebug = !_engine.viewOptions().showDebug;
                 break;
+            case GLFW_KEY_C:
+                _engine.viewOptions().showCache = !_engine.viewOptions().showCache;
+                break;
             case GLFW_KEY_S:
                 _engine.updateStep();
                 break;
@@ -154,11 +157,21 @@ void Viewer::initializeGUI() {
     _showMeshesCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showMeshes = b; refreshGUI(); });
     _showDebugCheckBox = new nanogui::CheckBox(_window, "Show Debug (D)");
     _showDebugCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showDebug = b; refreshGUI(); });
+    _showCacheCheckBox = new nanogui::CheckBox(_window, "Show Cache (C)");
+    _showCacheCheckBox->setCallback([&] (bool b) { _engine.viewOptions().showCache = b; refreshGUI(); });
 
     new nanogui::Label(_window, "Options", "sans-bold");
     nanogui::CheckBox *anisotropicMeshCheckBox = new nanogui::CheckBox(_window, "Anisotropic Mesh");
     anisotropicMeshCheckBox->setChecked(_anisotropicMesh);
     anisotropicMeshCheckBox->setCallback([&] (bool b) { _anisotropicMesh = b; refreshGUI(); });
+
+    _transportPanel = new nanogui::Panel(this);
+    _transportPanel->setPosition(nanogui::Vector2i(0, mSize.y() - 50));
+    _transportPanel->setFixedSize(nanogui::Vector2i(mSize.x(), 50));
+    _transportPanel->setLayout(new nanogui::GroupLayout());
+
+    _transportSlider = new nanogui::Slider(_transportPanel);
+    _transportSlider->setCallback([&] (float value) { _engine.setCachePosition(value); });
 
     performLayout(mNVGContext);
     setVisible(true);
@@ -170,6 +183,8 @@ void Viewer::refreshGUI() {
     _showBoundaryParticlesCheckBox->setChecked(_engine.viewOptions().showBoundaryParticles);
     _showMeshesCheckBox->setChecked(_engine.viewOptions().showMeshes);
     _showDebugCheckBox->setChecked(_engine.viewOptions().showDebug);
+    _showCacheCheckBox->setChecked(_engine.viewOptions().showCache);
+    _transportPanel->setVisible(_engine.viewOptions().showCache);
 }
 
 void Viewer::createMesh() {

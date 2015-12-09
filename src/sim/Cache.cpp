@@ -2,6 +2,7 @@
 
 #include "core/Serialize.h"
 #include "core/Vector.h"
+#include "core/FileUtils.h"
 
 #include <fstream>
 
@@ -9,25 +10,28 @@ namespace pbs {
 
 Cache::Cache(const filesystem::path &dir) :
     _dir(dir),
-    _frame(-1)
+    _frame(-1),
+    _frameCount(0)
 {
-    DBG("cacheDir: %s", dir.str());
+    FileUtils::createDir(dir.str());
+    _valid = readMeta();
 }
 
 void Cache::clear() {
+    _valid = false;
+}
 
+void Cache::commit() {
+    writeMeta();
+    _valid = true;
 }
 
 void Cache::setFrame(int frame) {
     _frame = frame;
 }
 
-int Cache::startFrame() const {
-    return 0;
-}
-
-int Cache::endFrame() const {
-    return 0;
+void Cache::setFrameCount(int frameCount) {
+    _frameCount = frameCount;
 }
 
 void Cache::writeParticles(const std::vector<Vector3f> &particles) {
@@ -41,6 +45,20 @@ bool Cache::readParticles(std::vector<Vector3f> &particles) {
         return false;
     }
     Serialize::readVector(*is, particles);
+    return true;
+}
+
+void Cache::writeMeta() {
+    std::ofstream os((_dir / "metadata").str());
+    Serialize::write(os, _frameCount);
+}
+
+bool Cache::readMeta() {
+    std::ifstream is((_dir / "metadata").str());
+    if (!is.good()) {
+        return false;
+    }
+    Serialize::read(is, _frameCount);
     return true;
 }
 

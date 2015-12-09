@@ -47,6 +47,7 @@ public:
     float time() const { return _time; }
 
     const std::vector<Vector3f> &fluidPositions() const { return _fluidPositions; }
+          std::vector<Vector3f> &fluidPositions()       { return _fluidPositions; }
     const std::vector<Vector3f> &boundaryPositions() const { return _boundaryPositions; }
     const std::vector<Vector3f> &boundaryNormals() const { return _boundaryNormals; }
     const std::vector<Mesh> &boundaryMeshes() const { return _boundaryMeshes; }
