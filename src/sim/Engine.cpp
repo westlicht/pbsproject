@@ -23,6 +23,11 @@ Engine::Engine(NVGcontext *ctx, const Vector2i &size) :
     _ctx(ctx),
     _size(size)
 {
+    _gridPainter.reset(new GridPainter());
+    _boxPainter.reset(new BoxPainter());
+    _particlePainter.reset(new ParticleSpherePainter());
+    _particleNormalPainter.reset(new ParticleNormalPainter());
+    _meshPainter.reset(new MeshPainter());
 }
 
 void Engine::loadScene(const filesystem::path &path, const json11::Json &settings) {
@@ -41,12 +46,6 @@ void Engine::loadScene(const filesystem::path &path, const json11::Json &setting
     _sph.reset(new SPH(scene));
     std::string cachePath = FileUtils::splitExtension(path.str()).first + ".cache";
     _cache.reset(new Cache(cachePath));
-
-    _gridPainter.reset(new GridPainter());
-    _boxPainter.reset(new BoxPainter());
-    _particlePainter.reset(new ParticleSpherePainter());
-    _particleNormalPainter.reset(new ParticleNormalPainter());
-    _meshPainter.reset(new MeshPainter());
 
     _boundaryMeshPainters.clear();
     for (const auto &mesh : _sph->boundaryMeshes()) {
