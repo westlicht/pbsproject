@@ -125,14 +125,15 @@ Mesh MarchingCubes<T>::generateIsoSurface(const T *scalarField, T isoLevel, cons
     }
 
     // Compute normals
-    mesh.normals().resize(3, mesh.vertices().cols());
+    mesh.normals().resize(3, vertices.size());
+    mesh.normals().setConstant(0.f);
     for (int i = 0; i < mesh.triangles().cols(); ++i) {
         int id0 = mesh.triangles().col(i)[0];
         int id1 = mesh.triangles().col(i)[1];
         int id2 = mesh.triangles().col(i)[2];
         Vector3f v1(mesh.vertices().col(id1) - mesh.vertices().col(id0));
         Vector3f v2(mesh.vertices().col(id2) - mesh.vertices().col(id0));
-        Vector3f normal(v1.cross(v2).normalized());
+        Vector3f normal(v2.cross(v1).normalized());
         if (std::isnan(normal.x()) || std::isnan(normal.y()) || std::isnan(normal.z())) {
             continue;
         }
