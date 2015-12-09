@@ -2,6 +2,7 @@
 
 #include "core/Vector.h"
 #include "core/Box.h"
+#include "core/serialize.h"
 
 namespace pbs {
 
@@ -18,6 +19,20 @@ Box3f Mesh::computeBounds() const {
         bounds.expandBy(_vertices.col(i));
     }
     return bounds;
+}
+
+void Mesh::write(std::ostream &os) const {
+    Serialize::writeMatrix(os, _vertices);
+    Serialize::writeMatrix(os, _normals);
+    Serialize::writeMatrix(os, _texcoords);
+    Serialize::writeMatrix(os, _triangles);
+}
+
+void Mesh::read(std::istream &is) {
+    Serialize::readMatrix(is, _vertices);
+    Serialize::readMatrix(is, _normals);
+    Serialize::readMatrix(is, _texcoords);
+    Serialize::readMatrix(is, _triangles);
 }
 
 Mesh Mesh::createBox(const Box3f &box) {

@@ -2,6 +2,9 @@
 
 #include "core/Common.h"
 
+#include <ostream>
+#include <istream>
+
 namespace pbs {
 
 // Holds a triangle mesh.
@@ -23,6 +26,9 @@ public:
           MatrixXu &triangles()       { return _triangles; }
 
     Box3f computeBounds() const;
+
+    void write(std::ostream &os) const;
+    void read(std::istream &is);
 
     static Mesh createBox(const Box3f &box);
     static Mesh createSphere(const Vector3f &position, float radius, int segments = 32);
