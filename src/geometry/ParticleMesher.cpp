@@ -48,6 +48,10 @@ public:
 #if USE_TBB
         std::atomic<size_t> *cellCount = new std::atomic<size_t>[_cells.prod()];
         std::atomic<size_t> *cellIndex = new std::atomic<size_t>[_cells.prod()];
+        for (size_t i = 0; i < size_t(_cells.prod()); ++i) {
+            cellCount[i] = 0;
+            cellIndex[i] = 0;
+        }
 #else
         std::vector<size_t> cellCount(_cells.prod(), 0);
         std::vector<size_t> cellIndex(_cells.prod(), 0);
@@ -152,13 +156,16 @@ Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f 
 
     DBG("Generating mesh from particles (isotropic kernel)");
     Timer timer;
+    Timer timerTotal;
 
-    DBG("Building acceleration grid ...");
+    Vector3i gridCells(cells / 4);
+
+    DBG("Building acceleration grid (resolution=%s) ...", gridCells);
     timer.reset();
-    Grid grid(positions, bounds, cells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
+    Grid grid(positions, bounds, gridCells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
     DBG("Took %s", timer.elapsedString());
 
-    DBG("Building voxel grid ...");
+    DBG("Building voxel grid (resolution=%s) ...", cells);
     timer.reset();
     VoxelGridf voxelGrid(cells + Vector3i(1));
     Vector3f min = bounds.min;
@@ -201,6 +208,8 @@ Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f 
     MarchingCubes<float> mc;
     Mesh mesh = mc.generateIsoSurface(voxelGrid.data(), params.isoLevel, bounds, cells);
     DBG("Took %s", timer.elapsedString());
+
+    DBG("Building mesh took %s", timerTotal.elapsedString());
 
     return std::move(mesh);
 }
