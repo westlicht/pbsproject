@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Cache.h"
 #include "SPH.h"
 
 #include "core/Common.h"
@@ -51,6 +52,7 @@ private:
 
     Camera _camera;
     std::unique_ptr<SPH> _sph;
+    std::unique_ptr<Cache> _cache;
 
     ViewOptions _viewOptions;
 

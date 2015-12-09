@@ -4,6 +4,7 @@
 #include "core/Common.h"
 #include "core/DebugMonitor.h"
 #include "core/Profiler.h"
+#include "core/FileUtils.h"
 
 #include <stb_image_write.h>
 
@@ -38,6 +39,8 @@ void Engine::loadScene(const filesystem::path &path, const json11::Json &setting
     _camera.setFar(scene.camera.far);
 
     _sph.reset(new SPH(scene));
+    std::string cachePath = FileUtils::splitExtension(path.str()).first + ".cache";
+    _cache.reset(new Cache(cachePath));
 
     _gridPainter.reset(new GridPainter());
     _boxPainter.reset(new BoxPainter());
