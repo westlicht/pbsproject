@@ -34,12 +34,14 @@ public:
     const ViewOptions &viewOptions() const { return _viewOptions; }
           ViewOptions &viewOptions()       { return _viewOptions; }
 
-
     void loadScene(const filesystem::path &path, const json11::Json &settings = json11::Json());
 
     void update(float dt);
     void updateStep();
     float time() const;
+
+    void createFluidMesh();
+    void clearFluidMesh();
 
     void render();
 
@@ -61,6 +63,8 @@ private:
     std::unique_ptr<Cache> _cache;
 
     ViewOptions _viewOptions;
+
+    Mesh _fluidMesh;
 
     std::unique_ptr<GridPainter> _gridPainter;
     std::unique_ptr<BoxPainter> _boxPainter;

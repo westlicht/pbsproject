@@ -66,6 +66,35 @@ float Engine::time() const {
     return _sph->time();
 }
 
+void Engine::createFluidMesh() {
+    ParticleMesher::Parameters params;
+    params.particleRadius = _sph->parameters().particleRadius;
+    params.particleDiameter = _sph->parameters().particleDiameter;
+    params.kernelRadius = _sph->parameters().kernelRadius;
+    params.kernelSupportParticles = _sph->parameters().kernelSupportParticles;
+    params.particleMass = _sph->parameters().particleMass;
+    params.restDensity = _sph->parameters().restDensity;
+    params.isoLevel = 0.15f;
+
+    MatrixXf positions = toMatrix(_sph->fluidPositions());
+    Box3f bounds = _sph->bounds().expanded(_sph->bounds().extents() * 0.05f); // expand bounds by 5% of diagonal
+    Vector3f extents = bounds.extents();
+
+    Vector3i cells(
+        int(std::ceil(extents.x() / params.particleRadius)),
+        int(std::ceil(extents.y() / params.particleRadius)),
+        int(std::ceil(extents.z() / params.particleRadius))
+    );
+
+    _fluidMesh = ParticleMesher::createMeshIsotropic(positions, bounds, cells, params);
+    _meshPainter->setMesh(_fluidMesh);
+}
+
+void Engine::clearFluidMesh() {
+    _fluidMesh = Mesh();
+    _meshPainter->setMesh(_fluidMesh);
+}
+
 void Engine::render() {
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

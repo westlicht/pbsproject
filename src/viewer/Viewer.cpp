@@ -188,32 +188,11 @@ void Viewer::refreshGUI() {
 }
 
 void Viewer::createMesh() {
-#if 0
-    ParticleMesher::Parameters params;
-    params.particleRadius = _sph->parameters().particleRadius;
-    params.particleDiameter = _sph->parameters().particleDiameter;
-    params.kernelRadius = _sph->parameters().kernelRadius;
-    params.kernelSupportParticles = _sph->parameters().kernelSupportParticles;
-    params.particleMass = _sph->parameters().particleMass;
-    params.restDensity = _sph->parameters().restDensity;
-    params.isoLevel = 0.2f;
-
-    MatrixXf positions = toMatrix(_sph->fluidPositions());
-    Box3f bounds = _sph->bounds().expanded(_sph->bounds().extents() * 0.05f); // expand bounds by 5% of diagonal
-    Vector3i cells(256);
-
-    Mesh mesh = _anisotropicMesh ?
-        ParticleMesher::createMeshAnisotropic(positions, bounds, cells, params) :
-        ParticleMesher::createMeshIsotropic(positions, bounds, cells, params);
-
-    _meshPainter->setMesh(mesh);
-#endif
+    _engine.createFluidMesh();
 }
 
 void Viewer::clearMesh() {
-#if 0
-    _meshPainter->setMesh(Mesh());
-#endif
+    _engine.clearFluidMesh();
 }
 
 void Viewer::renderAnimation() {
