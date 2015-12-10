@@ -8,6 +8,8 @@
 #include "core/Vector.h"
 #include "core/Timer.h"
 
+#include "sim/Kernel.h"
+
 #include <tbb/tbb.h>
 
 #include <Eigen/Geometry>
@@ -141,28 +143,41 @@ Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f 
     Grid grid(positions, bounds, gridCells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
     DBG("Took %s", timer.elapsedString());
 
+    DBG("Compute densities");
+    Kernel kernel;
+    kernel.init(kernelRadius);
+    timer.reset();
+    std::vector<float> densities(positions.cols());
+    parallelFor(positions.cols(), [&] (size_t i) {
+        float density = 0;
+        grid.lookup(positions.col(i), [&] (size_t j) {
+            float r2 = (positions.col(i) - positions.col(j)).squaredNorm();
+            if (r2 < kernelRadius2) {
+                density += kernel.poly6(r2);
+            }
+        });
+        densities[i] = params.particleMass * kernel.poly6Constant * density;
+    });
+    DBG("Took %s", timer.elapsedString());
+
     DBG("Building voxel grid (resolution=%s) ...", cells);
     timer.reset();
     VoxelGridf voxelGrid(cells + Vector3i(1));
     Vector3f min = bounds.min;
     Vector3f extents = bounds.extents();
-
-    float poly6Constant = 365.f / (64.f * M_PI * std::pow(kernelRadius, 9.f));
-    float normalization = params.particleMass / params.restDensity * poly6Constant;
-    parallelFor((cells + Vector3i(1)).prod(), [cells, min, extents, poly6Constant, kernelRadius2, normalization, &grid, &positions, &voxelGrid] (size_t i) {
+    parallelFor((cells + Vector3i(1)).prod(), [&] (size_t i) {
         int x = i % (cells.x() + 1);
         int y = (i / (cells.x() + 1)) % (cells.y() + 1);
         int z = (i / ((cells.x() + 1) * (cells.y() + 1))) % (cells.z() + 1);
         Vector3f p = Vector3f(float(x) / cells.x(), float(y) / cells.y(), float(z) / cells.z()).cwiseProduct(extents) + min;
         float c = 0.f;
-        grid.lookup(p, [&] (size_t i) {
-            float r2 = (p - positions.col(i)).squaredNorm();
-            if (r2 < kernelRadius2 && r2 != 0.f) {
-                c += cube(kernelRadius2 - r2);
+        grid.lookup(p, [&] (size_t j) {
+            float r2 = (p - positions.col(j)).squaredNorm();
+            if (r2 < kernelRadius2) {
+                c += kernel.poly6(r2) / densities[j];
             }
         });
-        c *= normalization;
-        voxelGrid(x, y, z) = c;
+        voxelGrid(x, y, z) = c * params.particleMass * kernel.poly6Constant;
     });
     DBG("Took %s", timer.elapsedString());
 
