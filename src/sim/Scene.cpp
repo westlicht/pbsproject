@@ -125,8 +125,6 @@ Scene Scene::load(const std::string &filename, const json11::Json &settings) {
     }
     scene.settings = Properties(json11::Json(settingsValues));
 
-    DBG("settings = %s", scene.settings.json().dump());
-
     // Parse scene objects
     Json jsonScene = jsonRoot["scene"];
     if (jsonScene.is_object()) {
