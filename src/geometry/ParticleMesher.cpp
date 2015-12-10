@@ -192,7 +192,8 @@ Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f 
     return std::move(mesh);
 }
 
-Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bounds, const Vector3i &cells, const Parameters &params) {
+Mesh ParticleMesher::createMeshAnisotropic(const MatrixXf &positions_, const Box3f &bounds, const Vector3i &cells, const Parameters &params) {
+    MatrixXf positions(positions_);
     typedef Eigen::Matrix<float, 3, 3> Matrix3f;
     typedef Eigen::DiagonalMatrix<float, 3> DiagonalMatrix3f;
 
@@ -202,35 +203,52 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
 
     Vector3i gridCells(cells / 4);
 
-#if 1
+    std::vector<float> densities(positions.cols());
+
     // Smooth particle positions
     {
         float kernelRadius = params.kernelRadius;
         float kernelRadius2 = sqr(kernelRadius);
-        float lambda = 0.9f; // smoothing strength
+        float lambda = 0.99f; // smoothing strength
 
-        DBG("Building acceleration grid (smoothing) ...");
+        DBG("Building acceleration grid (smoothing & densities) ...");
         timer.reset();
         Grid grid(positions, bounds, gridCells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
         DBG("Took %s", timer.elapsedString());
 
         DBG("Smoothing particle positions ...");
         timer.reset();
-        parallelFor(positions.cols(), [&] (size_t i) {
-            Vector3f x = positions.col(i);
+        parallelFor(positions_.cols(), [&] (size_t i) {
+            Vector3f x = positions_.col(i);
             Vector3f xh;
             float totalWeight = 0.f;
-            grid.lookup(positions.col(i), [&] (size_t j) {
-                Vector3f r = positions.col(j) - x;
+            grid.lookup(x, [&] (size_t j) {
+                Vector3f r = positions_.col(j) - x;
                 float r2 = r.squaredNorm();
                 if (r2 < kernelRadius2) {
                     float weight = cube(kernelRadius2 - r2);
-                    xh += weight * positions.col(j);
+                    xh += weight * positions_.col(j);
                     totalWeight += weight;
                 }
             });
             xh *= (1.f / totalWeight);
             positions.col(i) = lerp(lambda, x, xh);
+        });
+        DBG("Took %s", timer.elapsedString());
+
+        DBG("Compute densities");
+        Kernel kernel;
+        kernel.init(kernelRadius);
+        timer.reset();
+        parallelFor(positions.cols(), [&] (size_t i) {
+            float density = 0;
+            grid.lookup(positions.col(i), [&] (size_t j) {
+                float r2 = (positions.col(i) - positions.col(j)).squaredNorm();
+                if (r2 < kernelRadius2) {
+                    density += kernel.poly6(r2);
+                }
+            });
+            densities[i] = params.particleMass * kernel.poly6Constant * density;
         });
         DBG("Took %s", timer.elapsedString());
     }
@@ -245,10 +263,10 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
             return 1.f - cube(t);
         };
 
-        float kernelRadius = params.kernelRadius;
+        float kernelRadius = 2.f * params.kernelRadius;
         float kernelRadius2 = sqr(kernelRadius);
         int Ns = params.kernelSupportParticles;
-        int Nsurface = 0;
+        std::atomic<int> Nsurface(0);
 
         DBG("Building acceleration grid (kernel estimation) ...");
         timer.reset();
@@ -278,7 +296,7 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
                 ++Nsurface;
                 // Compute weighted mean
                 Vector3f xw;
-                float totalWeight;
+                float totalWeight = 0.f;
                 grid.lookup(positions.col(i), [&] (size_t j) {
                     Vector3f r = positions.col(j) - x;
                     if (r.squaredNorm() < kernelRadius2) {
@@ -290,7 +308,7 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
                 xw *= (1.f / totalWeight);
 
                 // Compute weighted covariance matrix
-                Matrix3f C;
+                Matrix3f C = Matrix3f::Zero();
                 grid.lookup(positions.col(i), [&] (size_t j) {
                     Vector3f r = positions.col(j) - x;
                     if (r.squaredNorm() < kernelRadius2) {
@@ -304,7 +322,6 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
                 // Compute SVD
                 float kr = 4.f;
                 float ks = 1400.f;
-                //float kn = 0.5f;
 
                 Eigen::JacobiSVD<Matrix3f> svd(C, Eigen::ComputeFullU);
                 const auto &R = svd.matrixU();
@@ -314,70 +331,55 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
                 sigma.z() = std::max(sigma.z(), sigma.x() / kr);
                 sigma *= ks;
 
-                //DBG("sigma = %s", sigma);
-                DiagonalMatrix3f invSigma(sigma.cwiseInverse());
-                //DBG("invSigma = %s", Matrix3f(invSigma));
-                Matrix3f G(R * invSigma * R.transpose().eval());
-                G *= (1.f / kernelRadius);
-
-                //DBG("G = %s", G);
-
-                G = DiagonalMatrix3f(Vector3f(1.f / kernelRadius, 1.f / kernelRadius, 0.01 / kernelRadius));
+                Matrix3f G = (R * DiagonalMatrix3f(sigma.cwiseInverse()) * R.transpose()) * (1.f / kernelRadius);
 
                 kernels[i] = G;
                 determinants[i] = G.determinant();
 
             } else {
                 // Interior particle -> use isotropic kernel
-                kernels[i] = Matrix3f::Identity() * (1.f / kernelRadius);
-                determinants[i] = cube(1.f / kernelRadius);
-                //DBG("Gs = %s", kernels[i]);
+                float kn = 0.5f;
+                kernels[i] = Matrix3f::Identity() * (kn / kernelRadius);
+                determinants[i] = cube(kn / kernelRadius);
             }
         });
         DBG("Took %s", timer.elapsedString());
         DBG("%d of %d (%.1f%%) particles are classified surface particles", Nsurface, positions.cols(), float(Nsurface) / positions.cols() * 100.f);
     }
-#endif
 
-    float kernelRadius = params.kernelRadius;
+    float kernelRadius = 2.f * params.kernelRadius;
     float kernelRadius2 = sqr(kernelRadius);
+
+    Kernel kernel;
+    kernel.init(1.f);
 
     DBG("Building acceleration grid ...");
     timer.reset();
-    Grid grid(positions, bounds, gridCells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
+    Grid grid(positions, bounds, gridCells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius * 2), p + Vector3f(kernelRadius * 2)); });
     DBG("Took %s", timer.elapsedString());
-
 
     DBG("Building voxel grid ...");
     timer.reset();
     VoxelGridf voxelGrid(cells + Vector3i(1));
     Vector3f min = bounds.min;
     Vector3f extents = bounds.extents();
-
-    //float poly6Constant = 365.f / (64.f * M_PI * std::pow(kernelRadius, 9.f));
-    float poly6Constant = 365.f / (64.f * M_PI /* * std::pow(kernelRadius, 3.f)*/);
-    float normalization = params.particleMass / params.restDensity * poly6Constant;
-
-    //DiagonalMatrix3f G(Vector3f(1.f / kernelRadius));
-    //float det = G.diagonal().prod();
-
-    parallelFor((cells + Vector3i(1)).prod(), [cells, min, extents, poly6Constant, kernelRadius2, normalization, &grid, &positions, &kernels, &determinants, &voxelGrid] (size_t i) {
+    parallelFor((cells + Vector3i(1)).prod(), [&] (size_t i) {
         int x = i % (cells.x() + 1);
         int y = (i / (cells.x() + 1)) % (cells.y() + 1);
         int z = (i / ((cells.x() + 1) * (cells.y() + 1))) % (cells.z() + 1);
         Vector3f p = Vector3f(float(x) / cells.x(), float(y) / cells.y(), float(z) / cells.z()).cwiseProduct(extents) + min;
         float c = 0.f;
-        grid.lookup(p, [&] (size_t i) {
-            Vector3f r = p - positions.col(i);
+        grid.lookup(p, [&] (size_t j) {
+            Vector3f r = p - positions.col(j);
             float r2 = r.squaredNorm();
-            if (r2 < kernelRadius2 && r2 != 0.f) {
-                const auto &G = kernels[i];
-                const auto &det = determinants[i];
-                c += cube(1.f - sqr((G * r).norm())) * det;
+            if (r2 < kernelRadius2) {
+                const auto &G = kernels[j];
+                const auto &det = determinants[j];
+                c += kernel.poly6((G * r).squaredNorm()) * det / densities[j];
             }
         });
-        c *= normalization;
-        voxelGrid(x, y, z) = c;
+        //voxelGrid(x, y, z) = params.particleMass * c;
+        voxelGrid(x, y, z) = params.particleMass * kernel.poly6Constant * c;
     });
     DBG("Took %s", timer.elapsedString());
 

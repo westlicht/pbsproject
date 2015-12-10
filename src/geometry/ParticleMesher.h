@@ -20,7 +20,7 @@ public:
     };
 
     static Mesh createMeshIsotropic(const MatrixXf &positions, const Box3f &bounds, const Vector3i &cells, const Parameters &params);
-    static Mesh createMeshAnisotropic(MatrixXf &positions, const Box3f &bounds, const Vector3i &cells, const Parameters &params);
+    static Mesh createMeshAnisotropic(const MatrixXf &positions, const Box3f &bounds, const Vector3i &cells, const Parameters &params);
 };
 
 } // namespace pbs
