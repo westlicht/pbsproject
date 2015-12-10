@@ -182,6 +182,8 @@ private:
     std::vector<Vector3f> _fluidVelocities;
     std::vector<Vector3f> _fluidPositionsNew;
     std::vector<Vector3f> _fluidVelocitiesNew;
+    std::vector<Vector3f> _fluidPositionsPreShock;
+    std::vector<Vector3f> _fluidVelocitiesPreShock;
     std::vector<Vector3f> _fluidNormals;
     std::vector<Vector3f> _fluidForces;
     std::vector<Vector3f> _fluidPressureForces;
@@ -201,6 +203,7 @@ private:
     std::vector<Mesh> _boundaryMeshes;
 
     float _time = 0.f;
+    float _timePreShock;
 };
 
 } // namespace pbs

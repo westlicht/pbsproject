@@ -72,6 +72,8 @@ SPH::SPH(const Scene &scene) {
     _fluidVelocities.resize(_fluidPositions.size());
     _fluidPositionsNew.resize(_fluidPositions.size());
     _fluidVelocitiesNew.resize(_fluidPositions.size());
+    _fluidPositionsPreShock.resize(_fluidPositions.size());
+    _fluidPositionsPreShock.resize(_fluidPositions.size());
     _fluidNormals.resize(_fluidPositions.size());
     _fluidForces.resize(_fluidPositions.size());
     _fluidPressureForces.resize(_fluidPositions.size());
@@ -625,8 +627,8 @@ void SPH::pcisphUpdateVelocitiesAndPositions() {
     _maxVelocity = std::sqrt(std::accumulate(maxVelocity.begin(), maxVelocity.end(), 0.f, [] (float a, float b) { return std::max(a, b); }));
     _maxForce = std::sqrt(std::accumulate(maxForce.begin(), maxForce.end(), 0.f, [] (float a, float b) { return std::max(a, b); }));
 
-    std::swap(_fluidPositions, _fluidPositionsNew);
-    std::swap(_fluidVelocities, _fluidVelocitiesNew);
+    std::swap(_fluidPositionsNew, _fluidPositions);
+    std::swap(_fluidVelocitiesNew, _fluidVelocities);
 }
 
 void SPH::pcisphInit() {
@@ -641,11 +643,17 @@ void SPH::pcisphInit() {
     }
     DBG("min/max densities = %f/%f", mind, maxd);
 
+    _fluidPositionsPreShock = _fluidPositions;
+    _fluidVelocitiesPreShock = _fluidVelocities;
+
     // Relax initial particle distribution and reset velocities
     pcisphUpdate(10000);
     for (auto &v : _fluidVelocities) {
         v = Vector3f(0.f);
     }
+
+    _time = 0.f;
+    _timePreShock = 0.f;
 }
 
 void SPH::pcisphUpdate(int maxIterations) {
@@ -688,6 +696,9 @@ void SPH::pcisphUpdate(int maxIterations) {
             break;
         }
     }
+    if (k > 3) {
+        DBG("Computed %d pressure iterations!", k);
+    }
     DebugMonitor::addItem("pressureIterations", "%d", k);
 
     Profiler::profile("Update velocities/positions", [&] () {
@@ -705,9 +716,6 @@ void SPH::pcisphUpdate(int maxIterations) {
     DebugMonitor::addItem("avgDensityVariation", "%.1f", _avgDensityVariation);
     DebugMonitor::addItem("maxVelocity", "%.3f", _maxVelocity);
     DebugMonitor::addItem("maxForce", "%.3f", _maxForce);
-
-    _time += _timeStep;
-
 
     // Prevent divison by zero
     _maxVelocity = std::max(1e-8f, _maxVelocity);
@@ -742,16 +750,26 @@ void SPH::pcisphUpdate(int maxIterations) {
         if (0.45f * _kernelRadius / _maxVelocity < _timeStep) {
             DBG("shock due to [3]");
         }
-        _time -= _timeStep;
         _timeStep = std::min(0.2f * std::sqrt(_kernelRadius / _maxForce), 0.25f * _kernelRadius / _maxVelocity);
-        //_timeStep = std::max(1e-5f, _timeStep);
-        std::swap(_fluidPositions, _fluidPositionsNew);
-        std::swap(_fluidVelocities, _fluidVelocitiesNew);
+
+        // Go back two timesteps
+        _time = _timePreShock;
+        _fluidPositions = _fluidPositionsPreShock;
+        _fluidVelocities = _fluidVelocitiesPreShock;
+
         DebugMonitor::addItem("shock", "yes");
     } else {
         _prevMaxDensityVariation = _maxDensityVariation;
         DebugMonitor::addItem("shock", "no");
     }
+
+    // store time, positions and velocities of two timesteps back
+    // "new" buffer holds positions/velocities before current integration step!
+    _timePreShock = _time;
+    std::swap(_fluidPositionsNew, _fluidPositionsPreShock);
+    std::swap(_fluidVelocitiesNew, _fluidVelocitiesPreShock);
+
+    _time += _timeStep;
 
     DebugMonitor::addItem("timeStep", "%.5f", _timeStep);
     DebugMonitor::addItem("time", "%.5f", _time);
