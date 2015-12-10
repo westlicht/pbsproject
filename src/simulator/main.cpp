@@ -77,10 +77,15 @@ int main(int argc, char *argv[]) {
     settings.filename = options["input"].as<std::vector<std::string>>().front();
     settings.renderMode = pbs::SimulatorSettings::stringToRenderMode(renderMode);
 
-    nanogui::init();
-    std::unique_ptr<pbs::Simulator> screen(new pbs::Simulator(settings));
-    nanogui::mainloop();
-    nanogui::shutdown();
+    try {
+        nanogui::init();
+        std::unique_ptr<pbs::Simulator> screen(new pbs::Simulator(settings));
+        nanogui::mainloop();
+        nanogui::shutdown();
+    } catch (const std::exception &e) {
+        std::cerr << "Runtime error: " << e.what() << std::endl;
+        return -1;
+    }
 
     return 0;
 }

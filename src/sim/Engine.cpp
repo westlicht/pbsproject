@@ -100,6 +100,10 @@ void Engine::render() {
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    if (!_sph) {
+        return;
+    }
+
     nanogui::Matrix4f view = _camera.viewMatrix();
     nanogui::Matrix4f proj = _camera.projMatrix();
     nanogui::Matrix4f mv = view;

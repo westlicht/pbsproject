@@ -18,10 +18,14 @@
 
 namespace pbs {
 
+struct ViewerSettings {
+    std::string filename;
+};
+
 // Viewer screen.
 class Viewer : public nanogui::Screen {
 public:
-    Viewer();
+    Viewer(const ViewerSettings &settings);
     ~Viewer();
 
     // Event handlers
@@ -38,15 +42,10 @@ private:
 
     void createMesh();
     void clearMesh();
-    void renderAnimation();
-    void screenshot(const std::string &filename);
-
-    std::vector<std::string> findScenes(const std::string &path);
 
     void loadScene(const filesystem::path &path);
 
     nanogui::Window *_window;
-    nanogui::ComboBox *_sceneComboBox;
 
     nanogui::CheckBox *_showDomainCheckBox;
     nanogui::CheckBox *_showFluidParticlesCheckBox;
@@ -59,14 +58,8 @@ private:
     nanogui::Panel *_transportPanel;
     nanogui::Slider *_transportSlider;
 
-    std::vector<std::string> _sceneNames;
-
-    bool _anisotropicMesh = false;
+    bool _anisotropicMesh = true;
     bool _isRunning = false;
-
-    bool _isAnimation = false;
-    float _animationFPS = 60.f;
-    int _animationFrame;
 
     Engine _engine;
 };

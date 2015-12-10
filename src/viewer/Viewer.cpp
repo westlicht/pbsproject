@@ -23,21 +23,20 @@
 #include <nanogui/window.h>
 
 #include <filesystem/path.h>
-#include <stb_image_write.h>
-#include <tinydir.h>
 
 #include <memory>
 #include <chrono>
 
 namespace pbs {
 
-Viewer::Viewer() :
+Viewer::Viewer(const ViewerSettings &settings) :
     Screen(nanogui::Vector2i(1280, 720), "Fluid Simulator"),
     _engine(mNVGContext, mSize)
 {
-    _sceneNames = findScenes(SCENES_DIR);
     initializeGUI();
     refreshGUI();
+
+    loadScene(settings.filename);
 }
 
 Viewer::~Viewer() {
@@ -114,9 +113,7 @@ bool Viewer::keyboardEvent(int key, int scancode, int action, int modifiers) {
 }
 
 void Viewer::drawContents() {
-    if (_isAnimation) {
-        _engine.update(1.f / _animationFPS);
-    } else if (_isRunning) {
+    if (_isRunning) {
         _engine.updateStep();
         glfwPostEmptyEvent();
     }
@@ -129,27 +126,11 @@ void Viewer::initializeGUI() {
     _window->setPosition(Vector2i(15, 15));
     _window->setLayout(new nanogui::GroupLayout());
 
-    new nanogui::Label(_window, "Scene", "sans-bold");
-
-    _sceneComboBox = new nanogui::ComboBox(_window, _sceneNames);
-    _sceneComboBox->setCallback([&] (int i) {
-        loadScene(filesystem::path(SCENES_DIR) / _sceneNames[i]);
-        refreshGUI();
-    });
-    // Load default scene
-    auto it = std::find(_sceneNames.begin(), _sceneNames.end(), "dambreak.json");
-    if (it != _sceneNames.end()) {
-        loadScene(filesystem::path(SCENES_DIR) / *it);
-        _sceneComboBox->setSelectedIndex(std::distance(_sceneNames.begin(), it));
-    }
-
     new nanogui::Label(_window, "Actions", "sans-bold");
     nanogui::Button *createMeshButton = new nanogui::Button(_window, "Create Mesh");
     createMeshButton->setCallback([&] () { createMesh(); refreshGUI(); });
     nanogui::Button *clearMeshButton = new nanogui::Button(_window, "Clear Mesh");
     clearMeshButton->setCallback([&] () { clearMesh(); refreshGUI(); });
-    nanogui::Button *renderAnimationButton = new nanogui::Button(_window, "Render Animation");
-    renderAnimationButton->setCallback([&] () { renderAnimation(); refreshGUI(); });
 
     new nanogui::Label(_window, "Display", "sans-bold");
     _showDomainCheckBox = new nanogui::CheckBox(_window, "Show Domain (G)");
@@ -196,38 +177,11 @@ void Viewer::refreshGUI() {
 }
 
 void Viewer::createMesh() {
-    _engine.createFluidMesh();
+    _engine.createFluidMesh(_anisotropicMesh);
 }
 
 void Viewer::clearMesh() {
     _engine.clearFluidMesh();
-}
-
-void Viewer::renderAnimation() {
-    _window->setVisible(false);
-    _isAnimation = true;
-    _animationFrame = 0;
-}
-
-void Viewer::screenshot(const std::string &filename) {
-    std::unique_ptr<unsigned char[]> pixels(new unsigned char[mSize.prod() * 3]);
-    glReadPixels(0, 0, mSize.x(), mSize.y(), GL_RGB, GL_UNSIGNED_BYTE, pixels.get());
-    stbi_write_png(filename.c_str(), mSize.x(), mSize.y(), 3, pixels.get() + (3 * mSize.x() * (mSize.y() - 1)), -3 * mSize.x());
-}
-
-std::vector<std::string> Viewer::findScenes(const std::string &path) {
-    std::vector<std::string> scenes;
-    tinydir_dir dir;
-    tinydir_open_sorted(&dir, path.c_str());
-    for (size_t i = 0; i < dir.n_files; ++i) {
-        tinydir_file file;
-        tinydir_readfile_n(&dir, &file, i);
-        if (file.is_reg) {
-            scenes.emplace_back(file.name);
-        }
-    }
-    tinydir_close(&dir);        
-    return scenes;
 }
 
 void Viewer::loadScene(const filesystem::path &path) {
