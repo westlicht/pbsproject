@@ -48,7 +48,7 @@ public:
 
         } else if (_leftButton && (modifiers & GLFW_MOD_CONTROL)) {
             float viewDistance = (_position - _target).norm();
-            viewDistance = clamp(viewDistance + 0.25f * rel.y() * (viewDistance * 0.01f), 0.01f, 100.f);
+            viewDistance = clamp(viewDistance + 0.25f * rel.y() * (viewDistance * 0.01f), 0.01f, 10000.f);
             _position = _target + (_position - _target).normalized() * viewDistance;
         } else if (_leftButton && (modifiers & GLFW_MOD_SHIFT)) {
             float viewDistance = (_position - _target).norm();
@@ -76,7 +76,7 @@ public:
 
     bool scrollEvent(const nanogui::Vector2i &p, const nanogui::Vector2f &rel) {
         float viewDistance = (_position - _target).norm();
-        viewDistance = clamp(viewDistance - rel.y() * (viewDistance * 0.01f), 0.01f, 100.f);
+        viewDistance = clamp(viewDistance - rel.y() * (viewDistance * 0.01f), 0.01f, 10000.f);
         _position = _target + (_position - _target).normalized() * viewDistance;
         return true;
     }
