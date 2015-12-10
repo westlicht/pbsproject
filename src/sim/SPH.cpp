@@ -160,6 +160,7 @@ void SPH::updateBoundaryMasses() {
             weight += _kernel.poly6(r2);
         });
         _boundaryMasses[i] = _restDensity / (_kernel.poly6Constant * weight);
+        _boundaryMasses[i] /= 1.17f;
     });
 }
 
@@ -603,8 +604,8 @@ void SPH::pcisphUpdatePressureForces() {
             //const float &pressure_j = _boundaryPressures[j];
             const float &pressure_j = _fluidPressures[i];
 
-            pressureForce -= _particleMass2 * (pressure_i / sqr(density_i) + pressure_j / sqr(density_j)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
-            //pressureForce -= _particleMass * _boundaryMasses[j] * 4.f * (pressure_i / sqr(density_i)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
+            //pressureForce -= _particleMass2 * (pressure_i / sqr(density_i) + pressure_j / sqr(density_j)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
+            pressureForce -= _particleMass * _boundaryMasses[j] * 0.5f * (pressure_i / sqr(density_i) + pressure_j / sqr(density_j)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
         });
 #endif
 
