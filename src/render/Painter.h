@@ -296,11 +296,12 @@ struct MeshPainter {
             "}",
             // Fragment shader
             "#version 330\n"
+            "uniform vec4 color;\n"
             "in vec3 vNormal;\n"
             "out vec4 out_color;\n"
             "void main() {\n"
-            "    float s = mix(abs(dot(vNormal, vec3(0.0, 1.0, 0.0))), 0.2, 0.8);"
-            "    out_color = vec4(s);\n"
+            "    float s = mix(0.1, 0.9, abs(dot(vNormal, vec3(0.0, 1.0, 0.0))));\n"
+            "    out_color = vec4(s * color.rgb, color.a);\n"
             "}"
         );
     }
@@ -317,9 +318,10 @@ struct MeshPainter {
         triangleCount = mesh.triangles().cols();
     }
 
-    void draw(const nanogui::Matrix4f &mvp) {
+    void draw(const nanogui::Matrix4f &mvp, const nanogui::Color &color) {
         shader.bind();
         shader.setUniform("mvp", mvp);
+        shader.setUniform("color", color);
         glEnable(GL_DEPTH_TEST);
         shader.drawIndexed(GL_TRIANGLES, 0, triangleCount);
     }

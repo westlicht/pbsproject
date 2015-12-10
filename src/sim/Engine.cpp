@@ -114,7 +114,7 @@ void Engine::render() {
         _particlePainter->draw(mv, proj, toMatrix(_sph->fluidPositions()), nanogui::Color(0.5f, 0.5f, 1.f, 1.f), particleRadius);
     }
     if (_viewOptions.showFluidMesh) {
-        _fluidMeshPainter->draw(mvp);
+        _fluidMeshPainter->draw(mvp, nanogui::Color(0.5f, 0.5f, 1.f, 1.f));
     }
     if (_viewOptions.showBoundaryParticles) {
         float particleRadius = _sph->parameters().particleRadius * 2.f;
@@ -123,7 +123,7 @@ void Engine::render() {
     }
     if (_viewOptions.showBoundaryMeshes) {
         for (const auto &painter : _boundaryMeshPainters) {
-            painter->draw(mvp);
+            painter->draw(mvp, nanogui::Color(1.f, 0.5f, 0.5f, 1.f));
         }
     }
     if (_viewOptions.showDebug) {
