@@ -67,7 +67,7 @@ float Engine::time() const {
     return _sph->time();
 }
 
-void Engine::createFluidMesh() {
+void Engine::createFluidMesh(bool anisotropic) {
     ParticleMesher::Parameters params;
     params.particleRadius = _sph->parameters().particleRadius;
     params.particleDiameter = _sph->parameters().particleDiameter;
@@ -75,7 +75,6 @@ void Engine::createFluidMesh() {
     params.kernelSupportParticles = _sph->parameters().kernelSupportParticles;
     params.particleMass = _sph->parameters().particleMass;
     params.restDensity = _sph->parameters().restDensity;
-    params.isoLevel = 0.15f;
 
     MatrixXf positions = toMatrix(_sph->fluidPositions());
     Box3f bounds = _sph->bounds().expanded(_sph->bounds().extents() * 0.05f); // expand bounds by 5% of diagonal
@@ -87,7 +86,9 @@ void Engine::createFluidMesh() {
         int(std::ceil(extents.z() / params.particleRadius))
     );
 
-    _fluidMesh = ParticleMesher::createMeshIsotropic(positions, bounds, cells, params);
+    params.isoLevel = anisotropic ? 0.2f : 0.75f;
+    _fluidMesh = anisotropic ? ParticleMesher::createMeshAnisotropic(positions, bounds, cells, params)
+                             : ParticleMesher::createMeshIsotropic(positions, bounds, cells, params);
     _fluidMeshPainter->setMesh(_fluidMesh);
 }
 

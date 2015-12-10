@@ -41,7 +41,7 @@ public:
     void updateStep();
     float time() const;
 
-    void createFluidMesh();
+    void createFluidMesh(bool anisotropic = false);
     void clearFluidMesh();
 
     void render();
