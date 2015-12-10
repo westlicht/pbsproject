@@ -53,15 +53,6 @@ public:
     const std::vector<Mesh> &boundaryMeshes() const { return _boundaryMeshes; }
 
 private:
-    // iterate i=0..count-1 calling func(i)
-    template<typename Func>
-    inline void iterate(size_t count, Func func) {
-#if USE_TBB
-        tbb::parallel_for(0ul, count, 1ul, [func] (size_t i) { func(i); });
-#else
-        for (size_t i = 0; i < count; ++i) { func(i); }
-#endif
-    }
 
     // iterate over all neighbours around p, calling func(j, r, r2)
     template<typename Func>

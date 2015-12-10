@@ -138,7 +138,7 @@ void SPH::updateStep() {
 
 // Activate all boundary particles that are nearby fluid particles
 void SPH::activateBoundaryParticles() {
-    iterate(_boundaryPositions.size(), [this] (size_t i) {
+    parallelFor(_boundaryPositions.size(), [this] (size_t i) {
         _boundaryActive[i] = hasNeighbours(_fluidGrid, _fluidPositions, _boundaryPositions[i]);
     });
 }
@@ -152,7 +152,7 @@ void SPH::updateBoundaryGrid() {
 
 // Compute the approximate mass of boundary particles based on [4] equation 4 and 5
 void SPH::updateBoundaryMasses() {
-    iterate(_boundaryPositions.size(), [this] (size_t i) {
+    parallelFor(_boundaryPositions.size(), [this] (size_t i) {
         float weight = 0.f;
         iterateNeighbours(_boundaryGrid, _boundaryPositions, _boundaryPositions[i], [this, &weight] (size_t j, const Vector3f &r, float r2) {
             weight += _kernel.poly6(r2);
@@ -164,7 +164,7 @@ void SPH::updateBoundaryMasses() {
 // Computes densities of fluid and boundary particles based on [4] equation 6
 void SPH::updateDensities() {
 #if HANDLE_BOUNDARIES
-    iterate(_boundaryPositions.size(), [this] (size_t i) {
+    parallelFor(_boundaryPositions.size(), [this] (size_t i) {
         if (!_boundaryActive[i]) {
             return;
         }
@@ -183,7 +183,7 @@ void SPH::updateDensities() {
     });
 #endif
 
-    iterate(_fluidPositions.size(), [this] (size_t i) {
+    parallelFor(_fluidPositions.size(), [this] (size_t i) {
         float fluidDensity = 0.f;
         iterateNeighbours(_fluidGrid, _fluidPositions, _fluidPositions[i], [&] (size_t j, const Vector3f &r, float r2) {
             fluidDensity += _kernel.poly6(r2);
@@ -203,7 +203,7 @@ void SPH::updateDensities() {
 
 // Compute normals based on [3]
 void SPH::updateNormals() {
-    iterate(_fluidPositions.size(), [this] (size_t i) {
+    parallelFor(_fluidPositions.size(), [this] (size_t i) {
         Vector3f normal;
         iterateNeighbours(_fluidGrid, _fluidPositions, _fluidPositions[i], [&] (size_t j, const Vector3f &r, float r2) {
             normal += _kernel.poly6Grad(r, r2) / _fluidDensities[j];
@@ -246,7 +246,7 @@ void SPH::enforceBounds() {
 }
 
 void SPH::wcsphUpdateDensitiesAndPressures() {
-    iterate(_boundaryPositions.size(), [this] (size_t i) {
+    parallelFor(_boundaryPositions.size(), [this] (size_t i) {
         if (!_boundaryActive[i]) {
             return;
         }
@@ -269,7 +269,7 @@ void SPH::wcsphUpdateDensitiesAndPressures() {
         _boundaryPressures[i] = pressure;
     });
 
-    iterate(_fluidPositions.size(), [this] (size_t i) {
+    parallelFor(_fluidPositions.size(), [this] (size_t i) {
         float fluidDensity = 0.f;
         iterateNeighbours(_fluidGrid, _fluidPositions, _fluidPositions[i], [this, &fluidDensity] (size_t j, const Vector3f &r, float r2) {
             fluidDensity += _kernel.poly6(r2);
@@ -291,7 +291,7 @@ void SPH::wcsphUpdateDensitiesAndPressures() {
 }
 
 void SPH::wcsphUpdateForces() {
-    iterate(_fluidPositions.size(), [this] (size_t i) {
+    parallelFor(_fluidPositions.size(), [this] (size_t i) {
         Vector3f force(0.f);
         Vector3f forceViscosity;
         Vector3f forceCohesion;
@@ -423,7 +423,7 @@ void SPH::wcsphUpdate() {
     });
 
     Profiler::profile("Integrate", [&] () {
-        iterate(_fluidPositions.size(), [&] (size_t i) {
+        parallelFor(_fluidPositions.size(), [&] (size_t i) {
             Vector3f a = _invParticleMass * _fluidForces[i];
             _fluidVelocities[i] += a * _timeStep;
             _fluidPositions[i] += _fluidVelocities[i] * _timeStep;
@@ -473,7 +473,7 @@ void SPH::pcisphUpdateDensityVariationScaling() {
 // - compute all forces that are constant during PCISPH iterations (e.g. viscosity, surface tension, external forces)
 // - reset pressures and pressure forces
 void SPH::pcisphInitializeForces() {
-    iterate(_fluidPositions.size(), [&] (size_t i) {
+    parallelFor(_fluidPositions.size(), [&] (size_t i) {
         Vector3f forceViscosity;
         Vector3f forceCohesion;
         Vector3f forceCurvature;
@@ -519,7 +519,7 @@ void SPH::pcisphInitializeForces() {
 }
 
 void SPH::pcisphPredictVelocitiesAndPositions() {
-    iterate(_fluidPositions.size(), [&] (size_t i) {
+    parallelFor(_fluidPositions.size(), [&] (size_t i) {
         Vector3f a = _invParticleMass * (_fluidForces[i] + _fluidPressureForces[i]);
         _fluidVelocitiesNew[i] = _fluidVelocities[i] + a * _timeStep;
         _fluidPositionsNew[i] = _fluidPositions[i] + _fluidVelocitiesNew[i] * _timeStep;
@@ -530,7 +530,7 @@ void SPH::pcisphUpdatePressures() {
     tbb::enumerable_thread_specific<float> maxDensityVariation(-std::numeric_limits<float>::infinity());
     tbb::enumerable_thread_specific<float> accDensityVariation(0.f);
 
-    iterate(_fluidPositions.size(), [&] (size_t i) {
+    parallelFor(_fluidPositions.size(), [&] (size_t i) {
         float fluidDensity = 0.f;
         iterateNeighbours2(_fluidGrid, _fluidPositionsNew, _fluidPositions[i], _fluidPositionsNew[i], [&] (size_t j, const Vector3f &r, float r2) {
             fluidDensity += _kernel.poly6(r2);
@@ -561,7 +561,7 @@ void SPH::pcisphUpdatePressures() {
 }
 
 void SPH::pcisphUpdatePressureForces() {
-    iterate(_fluidPositions.size(), [&] (size_t i) {
+    parallelFor(_fluidPositions.size(), [&] (size_t i) {
         Vector3f pressureForce;
 
         iterateNeighbours(_fluidGrid, _fluidPositions, _fluidPositions[i], [&] (size_t j, const Vector3f &r, float r2) {
@@ -614,7 +614,7 @@ void SPH::pcisphUpdateVelocitiesAndPositions() {
     tbb::enumerable_thread_specific<float> maxVelocity(0.f);
     tbb::enumerable_thread_specific<float> maxForce(0.f);
 
-    iterate(_fluidPositions.size(), [&] (size_t i) {
+    parallelFor(_fluidPositions.size(), [&] (size_t i) {
         Vector3f force = _fluidForces[i] + _fluidPressureForces[i];
         maxForce.local() = std::max(maxForce.local(), force.squaredNorm());
         _fluidVelocitiesNew[i] = _fluidVelocities[i] + _invParticleMass * force * _timeStep;

@@ -4,6 +4,8 @@
 
 #include <tinyformat.h>
 
+#include <tbb/parallel_for.h>
+
 #include <cmath>
 #include <exception>
 #include <string>
@@ -106,6 +108,18 @@ std::string memString(size_t size, bool precise = false);
 
 /// Indent a string by the specified number of spaces
 std::string indent(const std::string &string, int amount = 2);
+
+// Threading
+
+// iterate i=0..count-1 calling func(i)
+template<typename Func>
+inline void parallelFor(size_t count, Func func) {
+#if USE_TBB
+    tbb::parallel_for(0ul, count, 1ul, [func] (size_t i) { func(i); });
+#else
+    for (size_t i = 0; i < count; ++i) { func(i); }
+#endif
+}
 
 // Debugging ------------------------------------------------------------------
 

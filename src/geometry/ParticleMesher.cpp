@@ -32,18 +32,10 @@ public:
     {
         // Compute particle bounds
         std::vector<Box3i> particleBounds(positions.cols());
-#if USE_TBB
-        tbb::parallel_for(0, int(positions.cols()), 1, [this, func, &positions, &particleBounds] (int i) {
+        parallelFor(positions.cols(), [this, func, &positions, &particleBounds] (size_t i) {
             Box3f box = func(positions.col(i));
             particleBounds[i] = Box3i(index(box.min).cwiseMax(0), index(box.max).cwiseMin(_cells - Vector3i(1)));
         });
-#else
-        for (int i = 0; i < positions.cols(); ++i) {
-            Box3f box = func(positions.col(i));
-            particleBounds[i] = Box3i(index(box.min).cwiseMax(0), index(box.max).cwiseMin(_cells - Vector3i(1)));
-        }
-#endif
-
 
 #if USE_TBB
         std::atomic<size_t> *cellCount = new std::atomic<size_t>[_cells.prod()];
@@ -59,19 +51,11 @@ public:
         _cellOffset.resize(_cells.prod() + 1);
 
         // Count number of particles per cell
-#if USE_TBB
-        tbb::parallel_for(0, int(particleBounds.size()), 1, [this, &particleBounds, &cellCount] (int i) {
+        parallelFor(particleBounds.size(), [this, &particleBounds, &cellCount] (size_t i) {
             iterate(particleBounds[i], [&] (const Vector3i &index) {
                 ++cellCount[linearize(index)];
             });
         });
-#else
-        for (const auto &box : particleBounds) {
-            iterate(box, [&] (const Vector3i &index) {
-                ++cellCount[linearize(index)];
-            });
-        }
-#endif
 
         // Initialize cell indices & offsets
         size_t index = 0;
@@ -84,19 +68,11 @@ public:
 
         // Put particles into cells
         _indices.resize(_cellOffset.back());
-#if USE_TBB
-        tbb::parallel_for(0, int(particleBounds.size()), 1, [this, &particleBounds, &cellIndex] (int i) {
+        parallelFor(particleBounds.size(), [this, &particleBounds, &cellIndex] (size_t i) {
             iterate(particleBounds[i], [&] (const Vector3i &index) {
                 _indices[cellIndex[linearize(index)]++] = i;
             });
         });
-#else
-        for (size_t i = 0; i < particleBounds.size(); ++i) {
-            iterate(particleBounds[i], [&] (const Vector3i &index) {
-                _indices[cellIndex[linearize(index)]++] = i;
-            });
-        }
-#endif
 
 #if USE_TBB
         delete [] cellCount;
@@ -173,34 +149,21 @@ Mesh ParticleMesher::createMeshIsotropic(const MatrixXf &positions, const Box3f 
 
     float poly6Constant = 365.f / (64.f * M_PI * std::pow(kernelRadius, 9.f));
     float normalization = params.particleMass / params.restDensity * poly6Constant;
-#if USE_TBB
-    tbb::parallel_for(0, (cells + Vector3i(1)).prod(), 1, [cells, min, extents, poly6Constant, kernelRadius2, normalization, &grid, &positions, &voxelGrid] (int i) {
+    parallelFor((cells + Vector3i(1)).prod(), [cells, min, extents, poly6Constant, kernelRadius2, normalization, &grid, &positions, &voxelGrid] (size_t i) {
         int x = i % (cells.x() + 1);
         int y = (i / (cells.x() + 1)) % (cells.y() + 1);
         int z = (i / ((cells.x() + 1) * (cells.y() + 1))) % (cells.z() + 1);
-#else
-    for (int z = 0; z <= cells.z(); ++z) {
-        for (int y = 0; y <= cells.y(); ++y) {
-            for (int x = 0; x <= cells.x(); ++x) {
-#endif
-                Vector3f p = Vector3f(float(x) / cells.x(), float(y) / cells.y(), float(z) / cells.z()).cwiseProduct(extents) + min;
-                float c = 0.f;
-                grid.lookup(p, [&] (size_t i) {
-                    float r2 = (p - positions.col(i)).squaredNorm();
-                    if (r2 < kernelRadius2 && r2 != 0.f) {
-                        c += cube(kernelRadius2 - r2);
-                    }
-                });
-                c *= normalization;
-                voxelGrid(x, y, z) = c;
-#if USE_TBB
-    });
-#else
+        Vector3f p = Vector3f(float(x) / cells.x(), float(y) / cells.y(), float(z) / cells.z()).cwiseProduct(extents) + min;
+        float c = 0.f;
+        grid.lookup(p, [&] (size_t i) {
+            float r2 = (p - positions.col(i)).squaredNorm();
+            if (r2 < kernelRadius2 && r2 != 0.f) {
+                c += cube(kernelRadius2 - r2);
             }
-        }
-    }
-#endif
-
+        });
+        c *= normalization;
+        voxelGrid(x, y, z) = c;
+    });
     DBG("Took %s", timer.elapsedString());
 
     DBG("Building surface ...");
@@ -220,6 +183,9 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
 
     DBG("Generating mesh from particles (anisotropic kernel)");
     Timer timer;
+    Timer timerTotal;
+
+    Vector3i gridCells(cells / 4);
 
 #if 1
     // Smooth particle positions
@@ -230,16 +196,12 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
 
         DBG("Building acceleration grid (smoothing) ...");
         timer.reset();
-        Grid grid(positions, bounds, cells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
+        Grid grid(positions, bounds, gridCells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
         DBG("Took %s", timer.elapsedString());
 
         DBG("Smoothing particle positions ...");
         timer.reset();
-#if USE_TBB
-        tbb::parallel_for(0ul, size_t(positions.cols()), 1ul, [&] (size_t i) {
-#else
-        for (size_t i = 0; i < size_t(positions.cols()); ++i) {
-#endif
+        parallelFor(positions.cols(), [&] (size_t i) {
             Vector3f x = positions.col(i);
             Vector3f xh;
             float totalWeight = 0.f;
@@ -254,11 +216,7 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
             });
             xh *= (1.f / totalWeight);
             positions.col(i) = lerp(lambda, x, xh);
-#if USE_TBB
         });
-#else
-        }
-#endif
         DBG("Took %s", timer.elapsedString());
     }
 
@@ -279,16 +237,12 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
 
         DBG("Building acceleration grid (kernel estimation) ...");
         timer.reset();
-        Grid grid(positions, bounds, cells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
+        Grid grid(positions, bounds, gridCells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
         DBG("Took %s", timer.elapsedString());
 
         DBG("Estimating kernels ...");
         timer.reset();
-#if USE_TBB
-        tbb::parallel_for(0ul, size_t(positions.cols()), 1ul, [&] (size_t i) {
-#else
-        for (size_t i = 0; i < size_t(positions.cols()); ++i) {
-#endif
+        parallelFor(positions.cols(), [&] (size_t i) {
             // Compute mass center and number of neighbors for early out
             Vector3f x = positions.col(i);
             Vector3f xm;
@@ -364,11 +318,7 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
                 determinants[i] = cube(1.f / kernelRadius);
                 //DBG("Gs = %s", kernels[i]);
             }
-#if USE_TBB
         });
-#else
-        }
-#endif
         DBG("Took %s", timer.elapsedString());
         DBG("%d of %d (%.1f%%) particles are classified surface particles", Nsurface, positions.cols(), float(Nsurface) / positions.cols() * 100.f);
     }
@@ -379,7 +329,7 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
 
     DBG("Building acceleration grid ...");
     timer.reset();
-    Grid grid(positions, bounds, cells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
+    Grid grid(positions, bounds, gridCells, [kernelRadius] (const Vector3f &p) { return Box3f(p - Vector3f(kernelRadius), p + Vector3f(kernelRadius)); });
     DBG("Took %s", timer.elapsedString());
 
 
@@ -396,38 +346,24 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
     //DiagonalMatrix3f G(Vector3f(1.f / kernelRadius));
     //float det = G.diagonal().prod();
 
-
-#if USE_TBB
-    tbb::parallel_for(0, (cells + Vector3i(1)).prod(), 1, [cells, min, extents, poly6Constant, kernelRadius2, normalization, &grid, &positions, &kernels, &determinants, &voxelGrid] (int i) {
+    parallelFor((cells + Vector3i(1)).prod(), [cells, min, extents, poly6Constant, kernelRadius2, normalization, &grid, &positions, &kernels, &determinants, &voxelGrid] (size_t i) {
         int x = i % (cells.x() + 1);
         int y = (i / (cells.x() + 1)) % (cells.y() + 1);
         int z = (i / ((cells.x() + 1) * (cells.y() + 1))) % (cells.z() + 1);
-#else
-    for (int z = 0; z <= cells.z(); ++z) {
-        for (int y = 0; y <= cells.y(); ++y) {
-            for (int x = 0; x <= cells.x(); ++x) {
-#endif
-                Vector3f p = Vector3f(float(x) / cells.x(), float(y) / cells.y(), float(z) / cells.z()).cwiseProduct(extents) + min;
-                float c = 0.f;
-                grid.lookup(p, [&] (size_t i) {
-                    Vector3f r = p - positions.col(i);
-                    float r2 = r.squaredNorm();
-                    if (r2 < kernelRadius2 && r2 != 0.f) {
-                        const auto &G = kernels[i];
-                        const auto &det = determinants[i];
-                        c += cube(1.f - sqr((G * r).norm())) * det;
-                    }
-                });
-                c *= normalization;
-                voxelGrid(x, y, z) = c;
-#if USE_TBB
-    });
-#else
+        Vector3f p = Vector3f(float(x) / cells.x(), float(y) / cells.y(), float(z) / cells.z()).cwiseProduct(extents) + min;
+        float c = 0.f;
+        grid.lookup(p, [&] (size_t i) {
+            Vector3f r = p - positions.col(i);
+            float r2 = r.squaredNorm();
+            if (r2 < kernelRadius2 && r2 != 0.f) {
+                const auto &G = kernels[i];
+                const auto &det = determinants[i];
+                c += cube(1.f - sqr((G * r).norm())) * det;
             }
-        }
-    }
-#endif
-
+        });
+        c *= normalization;
+        voxelGrid(x, y, z) = c;
+    });
     DBG("Took %s", timer.elapsedString());
 
     DBG("Building surface ...");
@@ -435,6 +371,8 @@ Mesh ParticleMesher::createMeshAnisotropic(MatrixXf &positions, const Box3f &bou
     MarchingCubes<float> mc;
     Mesh mesh = mc.generateIsoSurface(voxelGrid.data(), params.isoLevel, bounds, cells);
     DBG("Took %s", timer.elapsedString());
+
+    DBG("Building mesh took %s", timerTotal.elapsedString());
 
     return std::move(mesh);
 }
