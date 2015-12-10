@@ -2,7 +2,7 @@
 
 #include "core/Vector.h"
 #include "core/Box.h"
-#include "core/serialize.h"
+#include "core/Serialize.h"
 
 namespace pbs {
 
