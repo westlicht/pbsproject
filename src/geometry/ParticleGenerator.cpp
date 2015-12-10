@@ -6,6 +6,9 @@
 #include "core/Common.h"
 #include "core/Vector.h"
 #include "core/Box.h"
+#include "core/Timer.h"
+
+#include "sim/Grid.h"
 
 #include <pcg32.h>
 
@@ -95,8 +98,8 @@ ParticleGenerator::Boundary ParticleGenerator::generateBoundarySphere(const Vect
 ParticleGenerator::Boundary ParticleGenerator::generateBoundaryMesh(const Mesh &mesh, float particleRadius, int cells) {
 
     float density = 1.f / (M_PI * sqr(particleRadius));
-    DBG("density = %f", density);
 
+    Timer timer;
     DBG("Generating surface particles ...");
 
     // Compute bounds of mesh and expand by 10%
@@ -150,7 +153,6 @@ ParticleGenerator::Boundary ParticleGenerator::generateBoundaryMesh(const Mesh &
             samplePoint();
         }
     }
-    DBG("Generated %d points", result.positions.size());
 
     // Relax point distribution
     DBG("Relaxing point distribution ...");
@@ -159,22 +161,29 @@ ParticleGenerator::Boundary ParticleGenerator::generateBoundaryMesh(const Mesh &
     float radius = std::sqrt(totalArea / result.positions.size() * 10.f / M_PI);
     float radius2 = sqr(radius);
 
+    Grid grid;
+    grid.init(bounds, bounds.extents().maxCoeff() / 128.f);
+
     for (int iteration = 0; iteration < 10; ++iteration) {
         int count = 0;
         std::vector<Vector3f> velocities(result.positions.size(), Vector3f());
+        grid.update(result.positions, [&] (size_t i, size_t j) {
+            std::swap(result.positions[i], result.positions[j]);
+        });
         // Relax positions
         for (size_t i = 0; i < result.positions.size(); ++i) {
-            for (size_t j = i + 1; j < result.positions.size(); ++j) {
+            grid.lookup(result.positions[i], radius, [&] (size_t j) {
+                if (i == j) { return true; };
                 Vector3f r = result.positions[j] - result.positions[i];
                 float r2 = r.squaredNorm();
                 if (r2 < radius2) {
                     r *= (1.f / std::sqrt(r2));
-                    float weight = 0.01f * cube(1.f - r2 / radius2); // TODO use a proper kernel
+                    float weight = 0.002f * cube(1.f - r2 / radius2); // TODO use a proper kernel
                     velocities[i] -= weight * r;
-                    velocities[j] += weight * r;
                     ++count;
                 }
-            }
+                return true;
+            });
             result.positions[i] += velocities[i];
         }
         // Reproject to surface
@@ -183,7 +192,6 @@ ParticleGenerator::Boundary ParticleGenerator::generateBoundaryMesh(const Mesh &
             Vector3f n = sdf.gradient(p).normalized();
             result.positions[i] -= sdf.trilinear(p) * n;
         }
-        DBG("avg neighbours = %d", 2 * count / result.positions.size());
     }
 
     // Compute normals
@@ -191,6 +199,8 @@ ParticleGenerator::Boundary ParticleGenerator::generateBoundaryMesh(const Mesh &
     for (size_t i = 0; i < result.positions.size(); ++i) {
         result.normals[i] = sdf.gradient(sdf.toVoxelSpace(result.positions[i])).normalized();
     }
+
+    DBG("Took %s", timer.elapsedString());
 
     return result;
 }
