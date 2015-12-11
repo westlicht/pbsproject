@@ -87,7 +87,11 @@ std::unique_ptr<std::ostream> Cache::ostreamFor(const std::string &type, int fra
 }
 
 std::unique_ptr<std::istream> Cache::istreamFor(const std::string &type, int frame) const {
-    return std::move(std::unique_ptr<std::istream>(new std::ifstream(pathFor(type, frame).str().c_str())));
+    auto is = std::unique_ptr<std::istream>(new std::ifstream(pathFor(type, frame).str().c_str()));
+    if (!is || !is->good()) {
+        return nullptr;
+    }
+    return std::move(is);
 }
 
 } // namespace pbs
