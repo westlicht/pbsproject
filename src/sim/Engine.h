@@ -7,6 +7,7 @@
 #include "core/Vector.h"
 #include "render/Camera.h"
 #include "render/Painter.h"
+#include "render/GLFramebufferExt.h"
 
 #include <filesystem/path.h>
 #include <json11.h>
@@ -27,7 +28,7 @@ public:
         bool showCache = false;
     };
 
-    Engine(NVGcontext *ctx, const Vector2i &size);
+    Engine(NVGcontext *ctx, const Vector2i &size, const Vector2i &renderSize);
 
     const Camera &camera() const { return _camera; }
           Camera &camera()       { return _camera; }
@@ -51,13 +52,14 @@ public:
     void writeCache(int frame, bool particles, bool mesh);
     void readCache(int frame);
 
-    void savePng(const filesystem::path &path);
+    void renderToPNG(const filesystem::path &path);
 
 private:
     void renderDebugOverlay();
 
     NVGcontext *_ctx;
     Vector2i _size;
+    Vector2i _renderSize;
 
     Camera _camera;
     std::unique_ptr<SPH> _sph;
@@ -73,6 +75,8 @@ private:
     std::unique_ptr<ParticleNormalPainter> _particleNormalPainter;
     std::unique_ptr<MeshPainter> _fluidMeshPainter;
     std::vector<std::unique_ptr<MeshPainter>> _boundaryMeshPainters;
+
+    nanogui::GLFramebufferExt _framebuffer;
 };
 
 } // namespace pbs

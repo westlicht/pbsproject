@@ -16,8 +16,8 @@ struct SimulatorSettings {
 
     std::string filename;
     std::string tag;
-    int width = 1280;
-    int height = 720;
+    int width = 1920;
+    int height = 1080;
     float duration = 10.f;
     float timescale = 1.f;
     int framerate = 30;

@@ -10,9 +10,9 @@
 namespace pbs {
 
 Simulator::Simulator(const SimulatorSettings &settings) :
-    nanogui::Screen(nanogui::Vector2i(settings.width, settings.height), "Fluid Simulator"),
+    nanogui::Screen(nanogui::Vector2i(1280, 720), "Fluid Simulator"),
     _settings(settings),
-    _engine(mNVGContext, mSize)
+    _engine(mNVGContext, mSize, Vector2i(settings.width, settings.height))
 {
     setVisible(true);
 
@@ -51,35 +51,31 @@ void Simulator::drawContents() {
 
     bool writeFrame = _engine.time() >= _frameTime;
 
-    _engine.viewOptions().showDebug = !writeFrame;
-
-    switch (_settings.renderMode) {
-    case SimulatorSettings::Particles:
-        _engine.viewOptions().showFluidParticles = true;
-        _engine.viewOptions().showFluidMesh = false;
-        break;
-    case SimulatorSettings::Mesh:
-        _engine.viewOptions().showFluidParticles = !writeFrame;
-        _engine.viewOptions().showFluidMesh = writeFrame;
-        break;
-    }
+    _engine.render();
 
     if (writeFrame) {
         if (_settings.renderMode == SimulatorSettings::Mesh || _settings.cacheMesh) {
             _engine.createFluidMesh();
         }
-    }
 
-    _engine.render();
+        _engine.viewOptions().showDebug = false;
+        if (_settings.renderMode == SimulatorSettings::Mesh) {
+            _engine.viewOptions().showFluidParticles = false;
+            _engine.viewOptions().showFluidMesh = true;
 
-    if (writeFrame) {
-        _engine.savePng(tfm::format("images/frame%04d.png", _frameIndex));
+        }
+
+        _engine.renderToPNG(tfm::format("images/frame%04d.png", _frameIndex));
         if (_settings.cacheParticles || _settings.cacheMesh) {
             _engine.writeCache(_frameIndex, _settings.cacheParticles, _settings.cacheMesh);
         }
         _engine.clearFluidMesh();
         _frameTime += _frameInterval;
         ++_frameIndex;
+
+        _engine.viewOptions().showDebug = true;
+        _engine.viewOptions().showFluidParticles = true;
+        _engine.viewOptions().showFluidMesh = false;
     }
 
     if (_engine.time() >= _settings.duration) {

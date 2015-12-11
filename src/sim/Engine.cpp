@@ -21,15 +21,18 @@ static inline MatrixXf toMatrix(const std::vector<Vector3f> &data) {
     return std::move(result);
 }
 
-Engine::Engine(NVGcontext *ctx, const Vector2i &size) :
+Engine::Engine(NVGcontext *ctx, const Vector2i &size, const Vector2i &renderSize) :
     _ctx(ctx),
-    _size(size)
+    _size(size),
+    _renderSize(renderSize)
 {
     _gridPainter.reset(new GridPainter());
     _boxPainter.reset(new BoxPainter());
     _particlePainter.reset(new ParticleSpherePainter());
     _particleNormalPainter.reset(new ParticleNormalPainter());
     _fluidMeshPainter.reset(new MeshPainter());
+
+    _framebuffer.init(_renderSize, 1);
 }
 
 void Engine::loadScene(const filesystem::path &path, const json11::Json &settings) {
@@ -160,10 +163,18 @@ void Engine::readCache(int frame) {
     }
 }
 
-void Engine::savePng(const filesystem::path &path) {
-    std::unique_ptr<unsigned char[]> pixels(new unsigned char[_size.prod() * 3]);
-    glReadPixels(0, 0, _size.x(), _size.y(), GL_RGB, GL_UNSIGNED_BYTE, pixels.get());
-    stbi_write_png(path.str().c_str(), _size.x(), _size.y(), 3, pixels.get() + (3 * _size.x() * (_size.y() - 1)), -3 * _size.x());
+void Engine::renderToPNG(const filesystem::path &path) {
+    _framebuffer.bind();
+    _framebuffer.bindRead();
+    glViewport(0, 0, _renderSize.x(), _renderSize.y());
+
+    render();
+
+    std::unique_ptr<unsigned char[]> pixels(new unsigned char[_renderSize.prod() * 3]);
+    glReadPixels(0, 0, _renderSize.x(), _renderSize.y(), GL_RGB, GL_UNSIGNED_BYTE, pixels.get());
+    stbi_write_png(path.str().c_str(), _renderSize.x(), _renderSize.y(), 3, pixels.get() + (3 * _renderSize.x() * (_renderSize.y() - 1)), -3 * _renderSize.x());
+
+    _framebuffer.release();
 }
 
 void Engine::renderDebugOverlay() {

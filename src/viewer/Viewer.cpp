@@ -31,7 +31,7 @@ namespace pbs {
 
 Viewer::Viewer(const ViewerSettings &settings) :
     Screen(nanogui::Vector2i(1280, 720), "Fluid Simulator"),
-    _engine(mNVGContext, mSize)
+    _engine(mNVGContext, mSize, mSize)
 {
     initializeGUI();
     refreshGUI();
