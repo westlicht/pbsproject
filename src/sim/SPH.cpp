@@ -496,9 +496,9 @@ void SPH::pcisphInitializeForces() {
             float rn = std::sqrt(r2);
 
             // Viscosity
-            if (density_j > 0.0001f) {
+            //if (density_j > 0.0001f) {
                 forceViscosity -= (v_i - v_j) * (_kernel.viscosityLaplace(rn) / density_j);
-            }
+            //}
 
             // Surface tension (according to [3])
             float correctionFactor = 2.f * _restDensity / (density_i + density_j);
@@ -506,7 +506,11 @@ void SPH::pcisphInitializeForces() {
             forceCurvature += correctionFactor * (n_i - n_j);
         });
 
-        forceViscosity *= _viscosity * _particleMass * _kernel.viscosityLaplaceConstant;
+        //if (_fluidDensities[i] > 0.0001f) {
+            forceViscosity *= _viscosity * _particleMass2 * _kernel.viscosityLaplaceConstant / _fluidDensities[i];
+        //} else {
+        //    forceViscosity = Vector3f(0.f);
+        //}
 
         forceCohesion *= -_surfaceTension * _particleMass2 * _kernel.surfaceTensionConstant;
         forceCurvature *= -_surfaceTension * _particleMass;
@@ -580,7 +584,7 @@ void SPH::pcisphUpdatePressureForces() {
             const float &pressure_i = _fluidPressures[i];
             const float &pressure_j = _fluidPressures[j];
 
-            pressureForce -= _particleMass2 * 0.5f * (pressure_i / sqr(density_i) + pressure_j / sqr(density_j)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
+            pressureForce -= _particleMass2 * (pressure_i / sqr(density_i) + pressure_j / sqr(density_j)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
 #else
             const size_t k = j;//std::min(i, j);
             const float &density_k = _fluidDensities[k];
@@ -605,7 +609,7 @@ void SPH::pcisphUpdatePressureForces() {
             const float &pressure_j = _fluidPressures[i];
 
             //pressureForce -= _particleMass2 * (pressure_i / sqr(density_i) + pressure_j / sqr(density_j)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
-            pressureForce -= _particleMass * _boundaryMasses[j] * 0.5f * (pressure_i / sqr(density_i) + pressure_j / sqr(density_j)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
+            pressureForce -= _particleMass * _boundaryMasses[j] * (pressure_i / sqr(density_i) + pressure_j / sqr(density_j)) * _kernel.spikyGradConstant * _kernel.spikyGrad(r, rn);
         });
 #endif
 
