@@ -3,21 +3,21 @@
 import json
 import random
 
-random.seed(1337041)
+random.seed(123)
 
-scale = 10
+scale = 1
 
-particleRadius = scale * 0.05
+particleRadius = scale * 0.02
 
 w = scale * 20
 h = scale * 5
 d = scale * 10
-border = scale * 1
+border = scale * 0.1
 water = scale * 1
 waterheight = scale * 3
 waterborder = scale * 0.01
 
-bcount = 100
+bcount = 75
 bminsize = scale * 0.1
 bmaxsize = scale * 0.5
 bminheight = scale * 0.5
@@ -45,7 +45,7 @@ boxes.append({
 
 settings = {
     "particleRadius" : particleRadius,
-    "viscosity" : 0.0000001 / (scale*scale*scale),
+    "viscosity" : 5.0,
 }
 
 scene = {
