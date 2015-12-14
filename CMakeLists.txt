@@ -200,6 +200,12 @@ add_executable(simulator
 )
 target_link_libraries(simulator fluid)
 
+add_executable(renderer
+  src/renderer/main.cpp
+  src/renderer/Renderer.h src/renderer/Renderer.cpp
+)
+target_link_libraries(renderer fluid)
+
 add_executable(processor
   src/processor/main.cpp
 )
