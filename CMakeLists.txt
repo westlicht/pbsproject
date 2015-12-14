@@ -165,6 +165,7 @@ add_library(fluid STATIC
   src/geometry/ObjWriter.h src/geometry/ObjWriter.cpp
   src/geometry/ParticleGenerator.h src/geometry/ParticleGenerator.cpp
   src/geometry/ParticleMesher.h src/geometry/ParticleMesher.cpp
+  src/geometry/PlyWriter.h src/geometry/PlyWriter.cpp
   src/geometry/SDF.h src/geometry/SDF.cpp
   src/geometry/VoxelGrid.h
   src/geometry/Voxelizer.h src/geometry/Voxelizer.cpp
