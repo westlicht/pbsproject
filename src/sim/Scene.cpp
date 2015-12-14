@@ -25,6 +25,7 @@ Scene::Camera::Camera(const Properties &props) {
     fov = props.getFloat("fov", fov);
     near = props.getFloat("near", near);
     far = props.getFloat("far", far);
+    frame = props.getInteger("frame", frame);
 }
 
 std::string Scene::Camera::toString() const {
@@ -36,8 +37,9 @@ std::string Scene::Camera::toString() const {
         "  fov = %f,\n"
         "  near = %f,\n"
         "  far = %f\n"
+        "  frame = %d\n"
         "]",
-        position, target, up, fov, near, far
+        position, target, up, fov, near, far, frame
     );
 }
 
@@ -147,6 +149,9 @@ Scene Scene::load(const std::string &filename, const json11::Json &settings) {
         for (auto jsonMesh : jsonScene["meshes"].array_items()) {
             scene.meshes.emplace_back(Mesh(Properties(jsonMesh)));
         }
+        for (auto jsonCameraKeyframe : jsonScene["cameraKeyframes"].array_items()) {
+            scene.cameraKeyframes.emplace_back(Camera(Properties(jsonCameraKeyframe)));
+        }
         // Set default camera
         if (!jsonCamera.is_object()) {
             Vector3f center = scene.world.bounds.center();
@@ -176,14 +181,16 @@ std::string Scene::toString() const {
         "  world = %s,\n"
         "  boxes = %s,\n"
         "  spheres = %s,\n"
-        "  meshes = %s\n"
+        "  meshes = %s\n,"
+        "  cameraKeyframes = %s\n"
         "]",
         indent(settings.json().dump()),
         indent(camera.toString()),
         indent(world.toString()),
         indent(vectorToString(boxes)),
         indent(vectorToString(spheres)),
-        indent(vectorToString(meshes))
+        indent(vectorToString(meshes)),
+        indent(vectorToString(cameraKeyframes))
     );
 }
 
