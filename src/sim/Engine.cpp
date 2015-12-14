@@ -37,18 +37,18 @@ Engine::Engine(NVGcontext *ctx, const Vector2i &size, const Vector2i &renderSize
 
 void Engine::loadScene(const filesystem::path &path, const json11::Json &settings) {
     DBG("Loading scene from '%s' ...", path.str());
-    Scene scene = Scene::load(path.str(), settings);
-    DBG("%s", scene.toString());
+    _scene = Scene::load(path.str(), settings);
+    DBG("%s", _scene.toString());
 
     _camera.setResolution(_size);
-    _camera.setPosition(scene.camera.position);
-    _camera.setTarget(scene.camera.target);
-    _camera.setUp(scene.camera.up);
-    _camera.setFov(scene.camera.fov);
-    _camera.setNear(scene.camera.near);
-    _camera.setFar(scene.camera.far);
+    _camera.setPosition(_scene.camera.position);
+    _camera.setTarget(_scene.camera.target);
+    _camera.setUp(_scene.camera.up);
+    _camera.setFov(_scene.camera.fov);
+    _camera.setNear(_scene.camera.near);
+    _camera.setFar(_scene.camera.far);
 
-    _sph.reset(new SPH(scene));
+    _sph.reset(new SPH(_scene));
     std::string cachePath = FileUtils::splitExtension(path.str()).first + ".cache";
     _cache.reset(new Cache(cachePath));
 
@@ -139,10 +139,14 @@ void Engine::render() {
     }
 }
 
+void Engine::setCacheFrame(int frame) {
+    DBG("frame = %d", frame);
+    readCache(frame, _viewOptions.showFluidParticles, _viewOptions.showFluidMesh);
+}
+
 void Engine::setCachePosition(float position) {
     int frame = int(std::floor((_cache->frameCount() - 1) * position));
-    DBG("frame = %d", frame);
-    readCache(frame);
+    setCacheFrame(frame);
 }
 
 void Engine::writeCache(int frame, bool particles, bool mesh) {
@@ -155,10 +159,12 @@ void Engine::writeCache(int frame, bool particles, bool mesh) {
     }
 }
 
-void Engine::readCache(int frame) {
+void Engine::readCache(int frame, bool particles, bool mesh) {
     _cache->setFrame(frame);
-    _cache->readParticles(_sph->fluidPositions());
-    if (_cache->readMesh(_fluidMesh)) {
+    if (particles) {
+        _cache->readParticles(_sph->fluidPositions());
+    }
+    if (mesh && _cache->readMesh(_fluidMesh)) {
         _fluidMeshPainter->setMesh(_fluidMesh);
     }
 }
