@@ -200,6 +200,11 @@ add_executable(simulator
 )
 target_link_libraries(simulator fluid)
 
+add_executable(processor
+  src/processor/main.cpp
+)
+target_link_libraries(processor fluid)
+
 #set_target_properties(pbsproject PROPERTIES OUTPUT_NAME "PBS Project")
 
 if (WIN32)
