@@ -131,6 +131,8 @@ void Viewer::initializeGUI() {
     createMeshButton->setCallback([&] () { createMesh(); refreshGUI(); });
     nanogui::Button *clearMeshButton = new nanogui::Button(_window, "Clear Mesh");
     clearMeshButton->setCallback([&] () { clearMesh(); refreshGUI(); });
+    nanogui::Button *cameraJsonButton = new nanogui::Button(_window, "Camera JSON");
+    cameraJsonButton->setCallback([&] () { createCameraJson(); refreshGUI(); });
 
     new nanogui::Label(_window, "Display", "sans-bold");
     _showDomainCheckBox = new nanogui::CheckBox(_window, "Show Domain (G)");
@@ -182,6 +184,31 @@ void Viewer::createMesh() {
 
 void Viewer::clearMesh() {
     _engine.clearFluidMesh();
+}
+
+void Viewer::createCameraJson() {
+    auto vector3toJson = [&] (const Vector3f &v) {
+        return json11::Json(json11::Json::array({
+            json11::Json(v.x()),
+            json11::Json(v.y()),
+            json11::Json(v.z()) })
+        );
+    };
+
+    const auto &camera = _engine.camera();
+
+    json11::Json::object cameraJson;
+    cameraJson["position"] = vector3toJson(camera.position());
+    cameraJson["target"] = vector3toJson(camera.target());
+    cameraJson["up"] = vector3toJson(camera.up());
+    cameraJson["fov"] = json11::Json(camera.fov());
+    cameraJson["near"] = json11::Json(camera.near());
+    cameraJson["far"] = json11::Json(camera.far());
+    cameraJson["frame"] = json11::Json(_engine.cache().frame());
+
+    std::string str;
+    json11::Json(cameraJson).dump(str);
+    DBG("%s", str);
 }
 
 void Viewer::loadScene(const filesystem::path &path) {

@@ -165,6 +165,7 @@ add_library(fluid STATIC
   src/geometry/ObjWriter.h src/geometry/ObjWriter.cpp
   src/geometry/ParticleGenerator.h src/geometry/ParticleGenerator.cpp
   src/geometry/ParticleMesher.h src/geometry/ParticleMesher.cpp
+  src/geometry/PlyWriter.h src/geometry/PlyWriter.cpp
   src/geometry/SDF.h src/geometry/SDF.cpp
   src/geometry/VoxelGrid.h
   src/geometry/Voxelizer.h src/geometry/Voxelizer.cpp
@@ -198,6 +199,17 @@ add_executable(simulator
   src/simulator/Simulator.h src/simulator/Simulator.cpp
 )
 target_link_libraries(simulator fluid)
+
+add_executable(renderer
+  src/renderer/main.cpp
+  src/renderer/Renderer.h src/renderer/Renderer.cpp
+)
+target_link_libraries(renderer fluid)
+
+add_executable(processor
+  src/processor/main.cpp
+)
+target_link_libraries(processor fluid)
 
 #set_target_properties(pbsproject PROPERTIES OUTPUT_NAME "PBS Project")
 

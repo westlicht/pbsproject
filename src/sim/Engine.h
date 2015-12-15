@@ -36,21 +36,28 @@ public:
     const ViewOptions &viewOptions() const { return _viewOptions; }
           ViewOptions &viewOptions()       { return _viewOptions; }
 
+    const Scene &scene() const { return _scene; }
+    const SPH &sph() const { return *_sph; }
+    
+    const Cache &cache() const { return *_cache; }
+          Cache &cache()       { return *_cache; }
+
     void loadScene(const filesystem::path &path, const json11::Json &settings = json11::Json());
 
     void update(float dt);
     void updateStep();
     float time() const;
 
+    const Mesh &fluidMesh() const { return _fluidMesh; }
     void createFluidMesh(bool anisotropic = false);
     void clearFluidMesh();
 
     void render();
 
-    Cache &cache() { return *_cache; }
+    void setCacheFrame(int frame);
     void setCachePosition(float position);
     void writeCache(int frame, bool particles, bool mesh);
-    void readCache(int frame);
+    void readCache(int frame, bool particles, bool mesh);
 
     void renderToPNG(const filesystem::path &path);
 
@@ -62,6 +69,7 @@ private:
     Vector2i _renderSize;
 
     Camera _camera;
+    Scene _scene;
     std::unique_ptr<SPH> _sph;
     std::unique_ptr<Cache> _cache;
 

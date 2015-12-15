@@ -43,6 +43,8 @@ private:
     void createMesh();
     void clearMesh();
 
+    void createCameraJson();
+
     void loadScene(const filesystem::path &path);
 
     nanogui::Window *_window;

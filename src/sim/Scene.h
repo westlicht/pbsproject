@@ -27,6 +27,7 @@ public:
         float fov = 30.f;
         float near = 0.1f;
         float far = 100.f;
+        int frame = 0;
         Camera() = default;
         Camera(const Properties &props);
         std::string toString() const;
@@ -70,6 +71,7 @@ public:
     std::vector<Box> boxes;
     std::vector<Sphere> spheres;
     std::vector<Mesh> meshes;
+    std::vector<Camera> cameraKeyframes;
 
     static Scene load(const std::string &filename, const json11::Json &settings = json11::Json());
 

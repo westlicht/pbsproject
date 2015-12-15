@@ -7,7 +7,7 @@ random.seed(123)
 
 scale = 1
 
-particleRadius = scale * 0.02
+particleRadius = scale * 0.014
 
 w = scale * 20
 h = scale * 5
@@ -45,7 +45,7 @@ boxes.append({
 
 settings = {
     "particleRadius" : particleRadius,
-    "viscosity" : 5.0,
+    "viscosity" : 10.0,
 }
 
 scene = {
