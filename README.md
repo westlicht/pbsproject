@@ -15,10 +15,10 @@ This code was written for the semester project of the Physically Based Simulatio
 
 The following features have been implemented:
 
-- Basic OpenGL visualization
+- Interactive GUI with basic OpenGL visualization
 - JSON based scene description
-- Index-sorted uniform grid for neighbour search
 - Wavefront OBJ support
+- Index-sorted uniform grid for neighbour search
 - WCSPH [1] and PCISPH [2] solvers
 - PCISPH with adaptive time-stepping [3]
 - Boundaries using boundary particles [3], [4]
@@ -32,7 +32,33 @@ The following features have been implemented:
 
 ### Results
 
-TODO
+[![Tsunami Demo](http://img.youtube.com/vi/3de4YLqlMFQ/0.jpg)](https://www.youtube.com/watch?v=3de4YLqlMFQ)
+
+a few other videos are here:
+
+- [Surface Tension](https://www.youtube.com/watch?v=q_5-8wllZRQ)
+- [Bowl](https://www.youtube.com/watch?v=lmnQgVMAvO0)
+- [Dambreak I](https://www.youtube.com/watch?v=QScyVeJmLkY)
+- [Dambreak II](https://www.youtube.com/watch?v=K227gZz6KbQ)
+
+### Installation
+
+The code was tested only on OSX and Linux, but should be easy to get to work on Windows as well. To compile the project on OSX/Linux use the following procedure:
+
+```
+git clone --recursive https://github.com/westlicht/pbsproject.git
+cd pbsproject
+mkdir build
+cd build
+cmake ..
+make -j8
+```
+
+Now you can start the viewer using:
+
+```
+./viewer ../scenes/bowl.json
+```
 
 ### Third Party Code
 
