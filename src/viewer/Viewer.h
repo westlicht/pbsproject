@@ -60,7 +60,7 @@ private:
     nanogui::Panel *_transportPanel;
     nanogui::Slider *_transportSlider;
 
-    bool _anisotropicMesh = true;
+    bool _anisotropicMesh = false;
     bool _isRunning = false;
 
     Engine _engine;
