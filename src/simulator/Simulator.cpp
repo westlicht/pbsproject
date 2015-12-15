@@ -124,13 +124,13 @@ void Simulator::createVideo() {
         return;
     }
 
-    std::string filename = _basename + ".mkv";
+    std::string filename = _basename + ".mp4";
 
     std::cout << std::endl;
     std::cout << tfm::format("Encoding video '%s' ...", filename) << std::endl;
 
     try {
-        std::string arguments = tfm::format("-y -framerate %d -i images/frame%%04d.png -vcodec libx264 -r %d -preset slow -crf 10 %s", _settings.framerate, _settings.framerate, filename);
+        std::string arguments = tfm::format("-y -framerate %d -i images/frame%%04d.png -pix_fmt yuv420p -vcodec libx264 -r %d -preset slow -crf 10 %s", _settings.framerate, _settings.framerate, filename);
         exec_stream_t es;
         // Set 5 minutes timeout
         es.set_wait_timeout(exec_stream_t::s_out | exec_stream_t::s_err | exec_stream_t::s_child, 300*1000);

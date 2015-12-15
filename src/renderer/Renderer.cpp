@@ -150,15 +150,15 @@ void Renderer::createVideo() {
         return;
     }
 
-    std::string filename = _basename + ".mkv";
+    std::string filename = _basename + ".mp4";
 
     std::cout << std::endl;
     std::cout << tfm::format("Encoding video '%s' ...", filename) << std::endl;
 
     try {
-        std::string arguments = tfm::format("-y -framerate %d -i images/frame%%04d.png -vcodec libx264 -r %d -preset slow -crf 10 %s", _settings.framerate, _settings.framerate, filename);
+        std::string arguments = tfm::format("-y -framerate %d -i images/frame%%04d.png -pix_fmt yuv420p -vcodec libx264 -r %d -preset slow -crf 10 %s", _settings.framerate, _settings.framerate, filename);
         if (_settings.renderMode == RendererSettings::SLG) {
-            arguments = tfm::format("-y -framerate %d -i %s-images/frame-%%04d.png -vcodec libx264 -r %d -preset slow -crf 10 %s", _settings.framerate, _animationName, _settings.framerate, filename);
+            arguments = tfm::format("-y -framerate %d -i %s-images/frame-%%04d.png -pix_fmt yuv420p -vcodec libx264 -r %d -preset slow -crf 10 %s", _settings.framerate, _animationName, _settings.framerate, filename);
         }
         exec_stream_t es;
         // Set 5 minutes timeout
