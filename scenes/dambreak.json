@@ -4,8 +4,8 @@
         "particleRadius" : 0.008,
         "restDensity" : 1000.0,
         "soundSpeed" : 300.0,
-        "surfaceTension" : 0.5,
-        "viscosity" : 0.00001,
+        "surfaceTension" : 1.0,
+        "viscosity" : 2.0,
         "timeStep" : 0.001,
 
         "gravity" : [0,-9.81,0]
