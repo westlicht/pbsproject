@@ -23,7 +23,7 @@ Renderer::Renderer(const RendererSettings &settings) :
 
     _animationScene = Scene::load(settings.filenameAnimation);
     if (_animationScene.cameraKeyframes.size() != 2) {
-        throw Exception("Provide exactly too camera keyframes!");
+        throw Exception("Provide exactly two camera keyframes!");
     }
     _startCamera = _animationScene.cameraKeyframes[0];
     _endCamera = _animationScene.cameraKeyframes[1];
