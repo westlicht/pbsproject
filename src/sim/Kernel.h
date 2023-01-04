@@ -21,7 +21,7 @@ struct Kernel {
         h = h_;
         h2 = sqr(h);
         halfh = 0.5f * h;
-        poly6Constant = 365.f / (64.f * M_PI * std::pow(h, 9.f));
+        poly6Constant = 315.f / (64.f * M_PI * std::pow(h, 9.f));
         poly6GradConstant = -945.f / (32.f * M_PI * std::pow(h, 9.f));
         poly6LaplaceConstant = -945.f / (32.f * M_PI * std::pow(h, 9.f));
         spikyConstant = 15.f / (M_PI * std::pow(h, 6.f));
